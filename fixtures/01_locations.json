@@ -1,0 +1,883 @@
+[
+{
+    "model": "configuration.province",
+    "pk": 1,
+    "fields": { "name": "Pinar del Río", "short_name": "PR", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 2,
+    "fields": { "name": "Artemisa", "short_name": "AR", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 3,
+    "fields": { "name": "La Habana", "short_name": "HA", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 4,
+    "fields": { "name": "Mayabeque", "short_name": "MY", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 5,
+    "fields": { "name": "Matanzas", "short_name": "MT", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 6,
+    "fields": { "name": "Villa Clara", "short_name": "VC", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 7,
+    "fields": { "name": "Cienfuegos", "short_name": "CF", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 8,
+    "fields": { "name": "Sancti Spíritus", "short_name": "SS", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 9,
+    "fields": { "name": "Ciego de Ávila", "short_name": "CA", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 10,
+    "fields": { "name": "Camagüey", "short_name": "CM", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 11,
+    "fields": { "name": "Las Tunas", "short_name": "LT", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 12,
+    "fields": { "name": "Granma", "short_name": "GR", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 13,
+    "fields": { "name": "Holguín", "short_name": "HO", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 14,
+    "fields": { "name": "Santiago de Cuba", "short_name": "SC", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 15,
+    "fields": { "name": "Guantánamo", "short_name": "GT", "enabled": true }
+},
+{
+    "model": "configuration.province",
+    "pk": 16,
+    "fields": { "name": "Isla de la Juventud", "short_name": "IJ", "enabled": true }
+},
+
+{
+    "model": "configuration.municipality",
+    "pk": 1,
+    "fields": { "name": "Pinar del Río", "short_name": "PR", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 2,
+    "fields": { "name": "Viñales", "short_name": "VI", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 3,
+    "fields": { "name": "Minas de Matahambre", "short_name": "MM", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 4,
+    "fields": { "name": "Consolación del Sur", "short_name": "CS", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 5,
+    "fields": { "name": "La Palma", "short_name": "LP", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 6,
+    "fields": { "name": "Los Palacios", "short_name": "LO", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 7,
+    "fields": { "name": "Guane", "short_name": "GU", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 8,
+    "fields": { "name": "Sandino", "short_name": "SA", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 9,
+    "fields": { "name": "San Juan y Martínez", "short_name": "SM", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 10,
+    "fields": { "name": "Mantua", "short_name": "MA", "province": 1 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 11,
+    "fields": { "name": "Artemisa", "short_name": "AR", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 12,
+    "fields": { "name": "Mariel", "short_name": "MR", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 13,
+    "fields": { "name": "Guanajay", "short_name": "GJ", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 14,
+    "fields": { "name": "Caimito", "short_name": "CA", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 15,
+    "fields": { "name": "Bauta", "short_name": "BA", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 16,
+    "fields": { "name": "San Antonio de los Baños", "short_name": "SB", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 17,
+    "fields": { "name": "Güira de Melena", "short_name": "GM", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 18,
+    "fields": { "name": "Alquízar", "short_name": "AL", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 19,
+    "fields": { "name": "Bahía Honda", "short_name": "BH", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 20,
+    "fields": { "name": "Candelaria", "short_name": "CN", "province": 2 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 21,
+    "fields": { "name": "Playa", "short_name": "PL", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 22,
+    "fields": { "name": "Plaza de la Revolución", "short_name": "PR", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 23,
+    "fields": { "name": "Centro Habana", "short_name": "CH", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 24,
+    "fields": { "name": "La Habana Vieja", "short_name": "HV", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 25,
+    "fields": { "name": "Regla", "short_name": "RE", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 26,
+    "fields": { "name": "Habana del Este", "short_name": "HE", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 27,
+    "fields": { "name": "Guanabacoa", "short_name": "GB", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 28,
+    "fields": { "name": "San Miguel del Padrón", "short_name": "SP", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 29,
+    "fields": { "name": "Diez de Octubre", "short_name": "DO", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 30,
+    "fields": { "name": "Cerro", "short_name": "CE", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 31,
+    "fields": { "name": "Marianao", "short_name": "MN", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 32,
+    "fields": { "name": "La Lisa", "short_name": "LI", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 33,
+    "fields": { "name": "Boyeros", "short_name": "BO", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 34,
+    "fields": { "name": "Arroyo Naranjo", "short_name": "AN", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 35,
+    "fields": { "name": "Cotorro", "short_name": "CO", "province": 3 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 36,
+    "fields": { "name": "San José de las Lajas", "short_name": "SL", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 37,
+    "fields": { "name": "Bejucal", "short_name": "BE", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 38,
+    "fields": { "name": "Güines", "short_name": "GU", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 39,
+    "fields": { "name": "Santa Cruz del Norte", "short_name": "SN", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 40,
+    "fields": { "name": "Batabanó", "short_name": "BT", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 41,
+    "fields": { "name": "Quivicán", "short_name": "QU", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 42,
+    "fields": { "name": "Jaruco", "short_name": "JA", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 43,
+    "fields": { "name": "Melena del Sur", "short_name": "ME", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 44,
+    "fields": { "name": "Nueva Paz", "short_name": "NP", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 45,
+    "fields": { "name": "San Nicolás", "short_name": "NI", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 46,
+    "fields": { "name": "Tejas de Guines", "short_name": "TG", "province": 4 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 47,
+    "fields": { "name": "Matanzas", "short_name": "MT", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 48,
+    "fields": { "name": "Cárdenas", "short_name": "CA", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 49,
+    "fields": { "name": "Varadero", "short_name": "VA", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 50,
+    "fields": { "name": "Colón", "short_name": "CL", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 51,
+    "fields": { "name": "Perico", "short_name": "PE", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 52,
+    "fields": { "name": "Jovellanos", "short_name": "JO", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 53,
+    "fields": { "name": "Pedro Betancourt", "short_name": "PB", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 54,
+    "fields": { "name": "Limonar", "short_name": "LM", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 55,
+    "fields": { "name": "Unión de Reyes", "short_name": "UR", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 56,
+    "fields": { "name": "Jagüey Grande", "short_name": "JG", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 57,
+    "fields": { "name": "Ciénaga de Zapata", "short_name": "CZ", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 58,
+    "fields": { "name": "Calimete", "short_name": "CM", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 59,
+    "fields": { "name": "Los Arabos", "short_name": "LA", "province": 5 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 60,
+    "fields": { "name": "Santa Clara", "short_name": "SC", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 61,
+    "fields": { "name": "Sagua la Grande", "short_name": "SG", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 62,
+    "fields": { "name": "Camajuaní", "short_name": "CJ", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 63,
+    "fields": { "name": "Remedios", "short_name": "RE", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 64,
+    "fields": { "name": "Corralillo", "short_name": "CR", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 65,
+    "fields": { "name": "Quemado de Güines", "short_name": "QG", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 66,
+    "fields": { "name": "Encrucijada", "short_name": "EN", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 67,
+    "fields": { "name": "Cifuentes", "short_name": "CF", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 68,
+    "fields": { "name": "Santo Domingo", "short_name": "SD", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 69,
+    "fields": { "name": "Ranchuelo", "short_name": "RA", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 70,
+    "fields": { "name": "Placetas", "short_name": "PL", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 71,
+    "fields": { "name": "Manicaragua", "short_name": "MA", "province": 6 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 72,
+    "fields": { "name": "Cienfuegos", "short_name": "CF", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 73,
+    "fields": { "name": "Rodas", "short_name": "RO", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 74,
+    "fields": { "name": "Palmira", "short_name": "PA", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 75,
+    "fields": { "name": "Lajas", "short_name": "LA", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 76,
+    "fields": { "name": "Cruces", "short_name": "CR", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 77,
+    "fields": { "name": "Cumanayagua", "short_name": "CU", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 78,
+    "fields": { "name": "Abreus", "short_name": "AB", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 79,
+    "fields": { "name": "Aguada de Pasajeros", "short_name": "AP", "province": 7 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 80,
+    "fields": { "name": "Sancti Spíritus", "short_name": "SS", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 81,
+    "fields": { "name": "Trinidad", "short_name": "TR", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 82,
+    "fields": { "name": "Cabaiguán", "short_name": "CB", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 83,
+    "fields": { "name": "Fomento", "short_name": "FO", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 84,
+    "fields": { "name": "Yaguajay", "short_name": "YA", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 85,
+    "fields": { "name": "Jatibonico", "short_name": "JA", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 86,
+    "fields": { "name": "Taguasco", "short_name": "TA", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 87,
+    "fields": { "name": "La Sierpe", "short_name": "LS", "province": 8 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 88,
+    "fields": { "name": "Ciego de Ávila", "short_name": "CA", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 89,
+    "fields": { "name": "Morón", "short_name": "MO", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 90,
+    "fields": { "name": "Chambas", "short_name": "CH", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 91,
+    "fields": { "name": "Majagua", "short_name": "MJ", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 92,
+    "fields": { "name": "Baraguá", "short_name": "BA", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 93,
+    "fields": { "name": "Venezuela", "short_name": "VE", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 94,
+    "fields": { "name": "Primero de Enero", "short_name": "PE", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 95,
+    "fields": { "name": "Florida", "short_name": "FL", "province": 9 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 96,
+    "fields": { "name": "Camagüey", "short_name": "CM", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 97,
+    "fields": { "name": "Sibanicú", "short_name": "SI", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 98,
+    "fields": { "name": "Santa Cruz del Sur", "short_name": "SC", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 99,
+    "fields": { "name": "Florida", "short_name": "FL", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 100,
+    "fields": { "name": "Guáimaro", "short_name": "GU", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 101,
+    "fields": { "name": "Nuevitas", "short_name": "NU", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 102,
+    "fields": { "name": "Minas", "short_name": "MI", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 103,
+    "fields": { "name": "Esmeralda", "short_name": "ES", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 104,
+    "fields": { "name": "Jimaguayú", "short_name": "JI", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 105,
+    "fields": { "name": "Najasa", "short_name": "NA", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 106,
+    "fields": { "name": "Carlos Manuel de Céspedes", "short_name": "CC", "province": 10 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 107,
+    "fields": { "name": "Las Tunas", "short_name": "LT", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 108,
+    "fields": { "name": "Puerto Padre", "short_name": "PP", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 109,
+    "fields": { "name": "Jobabo", "short_name": "JO", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 110,
+    "fields": { "name": "Manatí", "short_name": "MA", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 111,
+    "fields": { "name": "Majibacoa", "short_name": "MJ", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 112,
+    "fields": { "name": "Jesús Menéndez", "short_name": "JM", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 113,
+    "fields": { "name": "Colombia", "short_name": "CO", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 114,
+    "fields": { "name": "Amancio", "short_name": "AM", "province": 11 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 115,
+    "fields": { "name": "Bayamo", "short_name": "BY", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 116,
+    "fields": { "name": "Manzanillo", "short_name": "MZ", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 117,
+    "fields": { "name": "Jiguaní", "short_name": "JI", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 118,
+    "fields": { "name": "Yara", "short_name": "YA", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 119,
+    "fields": { "name": "Campechuela", "short_name": "CP", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 120,
+    "fields": { "name": "Media Luna", "short_name": "ML", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 121,
+    "fields": { "name": "Niquero", "short_name": "NI", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 122,
+    "fields": { "name": "Pilón", "short_name": "PI", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 123,
+    "fields": { "name": "Buey Arriba", "short_name": "BA", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 124,
+    "fields": { "name": "Guisa", "short_name": "GU", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 125,
+    "fields": { "name": "Río Cauto", "short_name": "RC", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 126,
+    "fields": { "name": "Bartolomé Masó", "short_name": "BM", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 127,
+    "fields": { "name": "Cauto Cristo", "short_name": "CC", "province": 12 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 128,
+    "fields": { "name": "Holguín", "short_name": "HO", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 129,
+    "fields": { "name": "Banes", "short_name": "BN", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 130,
+    "fields": { "name": "Antilla", "short_name": "AN", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 131,
+    "fields": { "name": "Gibara", "short_name": "GI", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 132,
+    "fields": { "name": "Rafael Freyre", "short_name": "RF", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 133,
+    "fields": { "name": "Mayarí", "short_name": "MY", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 134,
+    "fields": { "name": "Moa", "short_name": "MO", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 135,
+    "fields": { "name": "Sagua de Tánamo", "short_name": "ST", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 136,
+    "fields": { "name": "Cueto", "short_name": "CU", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 137,
+    "fields": { "name": "Cacocum", "short_name": "CA", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 138,
+    "fields": { "name": "Urbano Noris", "short_name": "UN", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 139,
+    "fields": { "name": "Calixto García", "short_name": "CG", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 140,
+    "fields": { "name": "Frank País", "short_name": "FP", "province": 13 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 141,
+    "fields": { "name": "Santiago de Cuba", "short_name": "SC", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 142,
+    "fields": { "name": "Palma Soriano", "short_name": "PS", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 143,
+    "fields": { "name": "Contramaestre", "short_name": "CO", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 144,
+    "fields": { "name": "San Luis", "short_name": "SL", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 145,
+    "fields": { "name": "Songo-La Maya", "short_name": "SM", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 146,
+    "fields": { "name": "Guamá", "short_name": "GU", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 147,
+    "fields": { "name": "Mella", "short_name": "ME", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 148,
+    "fields": { "name": "Segundo Frente", "short_name": "SF", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 149,
+    "fields": { "name": "Tercer Frente", "short_name": "TF", "province": 14 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 150,
+    "fields": { "name": "Guantánamo", "short_name": "GT", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 151,
+    "fields": { "name": "Baracoa", "short_name": "BA", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 152,
+    "fields": { "name": "El Salvador", "short_name": "ES", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 153,
+    "fields": { "name": "Manuel Tames", "short_name": "MT", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 154,
+    "fields": { "name": "Yateras", "short_name": "YA", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 155,
+    "fields": { "name": "San Antonio del Sur", "short_name": "SA", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 156,
+    "fields": { "name": "Caimanera", "short_name": "CA", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 157,
+    "fields": { "name": "Maisí", "short_name": "MA", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 158,
+    "fields": { "name": "Imías", "short_name": "IM", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 159,
+    "fields": { "name": "Niceto Pérez", "short_name": "NP", "province": 15 }
+},
+{
+    "model": "configuration.municipality",
+    "pk": 160,
+    "fields": { "name": "Isla de la Juventud", "short_name": "IJ", "province": 16 }
+}
+]

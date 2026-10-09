@@ -1,0 +1,10 @@
+/frontend/
+db.sqlite3
+/.idea/
+/.vscode/
+*/__pycache__/
+**/migrations/*
+!**/migrations/__init__.py
+/media/**
+*.pyc
+/.git/
