@@ -31,7 +31,7 @@ urlpatterns = [
     path(r'api/auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
 
     # System Modules
-    path('api/v1.0/administration/', include('administration.urls')),
+    path('api/administration/', include('administration.urls')),
     path('api/configuration/', include('configuration.urls')),
     path('api/inventory/', include('inventory.urls')),
     path('api/sales/', include('sales.urls')),

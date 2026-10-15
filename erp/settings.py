@@ -125,10 +125,10 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Para ser mas específico, comenta la línea de arriba y usa esta:
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:8080", # Quasar/Vue default port
-#     "http://localhost:5173", # Vite default port
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080", # Quasar/Vue default port
+    "http://localhost:5173", # Vite default port
+]
 # Permite definir manualmente el listado de origenes permitidos
 # o utilizando la linea de arriba permitir todos
 
