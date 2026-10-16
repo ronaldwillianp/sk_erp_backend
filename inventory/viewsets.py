@@ -117,32 +117,63 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['delete'], url_path='purge')
     def purge(self, request):
         """
-                Elimina TODOS los productos y sus presentaciones.
-                ⚠️ También elimina el stock asociado.
-                Reinicia los IDs
-                """
-
-        stock_count = ProductWarehouseStock.objects.count()
-        ProductWarehouseStock.objects.all().delete()
-
-        movement_count = StockMovement.objects.count()
-        StockMovement.objects.all().delete()
-
-        product_count = Product.objects.count()
-        Product.objects.all().delete()
-
-        # Reiniciar IDs
-        reset_sequence('inventory_product')
-        reset_sequence('inventory_productpresentation')
-        reset_sequence('inventory_productwarehousestock')
-        reset_sequence('inventory_stockmovement')
-
-        return Response({
-            'message': f'{product_count} productos, {stock_count} stock y {movement_count} movimientos eliminados. IDs reiniciados.',
-            'products_deleted': product_count,
-            'stock_deleted': stock_count,
-            'movements_deleted': movement_count,
-        }, status=status.HTTP_200_OK)
+        Elimina TODOS los productos, presentaciones, stock, movimientos y vales.
+        Reinicia los IDs desde 1. Acción destructiva total.
+        """
+        from .models import (
+            StockDocumentLine, StockDocument, StockMovement,
+            ProductWarehouseStock, ProductPresentation, Product
+        )
+        
+        try:
+            with transaction.atomic():
+                # 1. Eliminar líneas de documentos de stock (dependen de Product)
+                StockDocumentLine.objects.all().delete()
+                
+                # 2. Eliminar documentos de stock (vales)
+                StockDocument.objects.all().delete()
+                
+                # 3. Eliminar movimientos de inventario
+                StockMovement.objects.all().delete()
+                
+                # 4. Eliminar stock por almacén
+                ProductWarehouseStock.objects.all().delete()
+                
+                # 5. Eliminar presentaciones (dependen de Product)
+                ProductPresentation.objects.all().delete()
+                
+                # 6. Eliminar productos
+                Product.objects.all().delete()
+                
+                # 7. Reiniciar secuencias de IDs (PostgreSQL)
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    tables_to_reset = [
+                        'inventory_product',
+                        'inventory_productpresentation',
+                        'inventory_productwarehousestock',
+                        'inventory_stockmovement',
+                        'inventory_stockdocument',
+                        'inventory_stockdocumentline',
+                    ]
+                    for table in tables_to_reset:
+                        try:
+                            cursor.execute(
+                                f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), 1, false)"
+                            )
+                        except Exception:
+                            pass  # Ignorar si la tabla no existe o no es PostgreSQL
+                
+                return Response({
+                    'message': 'Todos los productos, presentaciones, stock, movimientos y vales han sido eliminados. IDs reiniciados desde 1.',
+                    'status': 'success'
+                })
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Error al purgar productos: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['post'], url_path='generate-labels')
     def generate_labels(self, request):

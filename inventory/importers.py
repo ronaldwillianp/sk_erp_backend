@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Any
 from django.db import transaction
 from openpyxl import load_workbook, Workbook
 
-from .models import Warehouse, Supplier, Product, ProductPresentation, ProductWarehouseStock, StockMovement
+from .models import Warehouse, Supplier, Product, ProductPresentation, ProductWarehouseStock, StockMovement, StockDocument, StockDocumentLine
 from configuration.models import Province, Municipality, Category, MeasureUnit
 
 
@@ -280,7 +280,7 @@ class ProductImporter(BaseImporter):
         if missing:
             raise ImportError(0, 'headers', f'Faltan columnas requeridas: {", ".join(missing)}')
 
-        # Agrupar filas por SKU (preservando el número de fila original)
+        # Agrupar filas por SKU
         sku_rows = {}
         errors = []
         for row_num, row in enumerate(rows, start=2):
@@ -290,7 +290,6 @@ class ProductImporter(BaseImporter):
                 continue
             sku_rows.setdefault(sku, []).append((row_num, row))
 
-        # Si ya hay errores de SKU vacío, devolver sin crear nada
         if errors:
             return self._build_result(len(rows), errors)
 
@@ -306,9 +305,15 @@ class ProductImporter(BaseImporter):
             else:
                 valid_products.append(product_data)
 
-        # Si hay errores de validación, devolver sin crear nada
         if errors:
             return self._build_result(len(rows), errors)
+
+        # Contar cuántas líneas de stock habrá para saber si crear vale
+        has_stock_entries = any(
+            pres['quantity'] > 0
+            for product_data in valid_products
+            for pres in product_data['presentations']
+        )
 
         # ============================================
         # FASE 2: CREACIÓN (transacción global)
@@ -318,6 +323,17 @@ class ProductImporter(BaseImporter):
                 products_created = []
                 presentations_created = []
                 stock_entries_created = 0
+                document = None
+
+                # Si hay stock a cargar, crear un StockDocument (Vale de Entrada)
+                if has_stock_entries:
+                    document = StockDocument.objects.create(
+                        document_type='ENTRY',
+                        warehouse=self._get_default_warehouse(),  # Almacén por defecto del vale
+                        reference='Importación masiva de productos',
+                        notes=f'Generado automáticamente al importar {len(valid_products)} productos desde Excel/CSV',
+                        created_by=self.user,
+                    )
 
                 for product_data in valid_products:
                     # Crear producto
@@ -354,7 +370,8 @@ class ProductImporter(BaseImporter):
                         if quantity and quantity > 0:
                             warehouse = pres_data['warehouse']
                             self._create_initial_stock(
-                                product, presentation, warehouse, quantity, product_data['cost_price']
+                                product, presentation, warehouse, quantity,
+                                product_data['cost_price'], document
                             )
                             stock_entries_created += 1
 
@@ -363,6 +380,7 @@ class ProductImporter(BaseImporter):
                     'products_created': len(products_created),
                     'presentations_created': len(presentations_created),
                     'stock_entries_created': stock_entries_created,
+                    'document_number': document.number if document else None,
                     'error_count': 0,
                     'created_products': products_created,
                     'created_presentations': presentations_created,
@@ -370,7 +388,6 @@ class ProductImporter(BaseImporter):
                 }
 
         except Exception as e:
-            # Rollback automático por el atomic(). Reportar error general.
             return {
                 'total_rows': len(rows),
                 'products_created': 0,
@@ -386,6 +403,15 @@ class ProductImporter(BaseImporter):
                 }],
             }
 
+    def _get_default_warehouse(self):
+        """Obtiene el almacén por defecto para el vale padre."""
+        warehouse = Warehouse.objects.filter(is_default=True, enabled=True).first()
+        if not warehouse:
+            warehouse = Warehouse.objects.filter(enabled=True).first()
+        if not warehouse:
+            raise Exception('No hay almacenes disponibles en el sistema')
+        return warehouse
+    
     def _validate_product(self, sku, rows_list):
         """Valida un producto completo (todas sus filas). Retorna (data, errors)."""
         errors = []
@@ -570,8 +596,12 @@ class ProductImporter(BaseImporter):
             'warehouse': warehouse,
         }, []
 
-    def _create_initial_stock(self, product, presentation, warehouse, quantity, cost_price):
-        """Crea el stock inicial y registra el movimiento de entrada."""
+    def _create_initial_stock(self, product, presentation, warehouse, quantity, cost_price, document=None):
+        """
+        Crea el stock inicial y registra el movimiento de entrada.
+        Si hay un documento padre (vale), también crea la línea del documento.
+        """
+        # Crear o actualizar stock
         stock, created = ProductWarehouseStock.objects.get_or_create(
             product=product,
             warehouse=warehouse,
@@ -584,6 +614,14 @@ class ProductImporter(BaseImporter):
         stock.total_value += quantity * unit_cost
         stock.save()
 
+        # Determinar la referencia del movimiento
+        if document:
+            reference = f"Vale {document.number}"
+            notes = 'Generado por importación masiva de productos'
+        else:
+            reference = self.STOCK_REFERENCE
+            notes = 'Generado automáticamente por importación masiva'
+
         # Registrar movimiento de entrada
         StockMovement.objects.create(
             movement_type='ENTRY',
@@ -592,10 +630,20 @@ class ProductImporter(BaseImporter):
             warehouse=warehouse,
             quantity=quantity,
             unit_cost=unit_cost,
-            reference=self.STOCK_REFERENCE,
-            notes='Generado automáticamente por importación masiva',
+            reference=reference,
+            notes=notes,
             user=self.user,
         )
+
+        # Si hay documento, crear la línea del documento
+        if document:
+            StockDocumentLine.objects.create(
+                document=document,
+                product=product,
+                presentation=presentation,
+                quantity=quantity,
+                unit_cost=unit_cost,
+            )
 
     def _build_result(self, total_rows, errors):
         """Construye un resultado de solo errores (sin creaciones)."""
