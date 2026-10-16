@@ -4,7 +4,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import models as db_models
-from django.db.models import Count
+from django.db.models import Count, Sum
 from decimal import Decimal
 from django.db import transaction
 from .models import Customer, Invoice, InvoiceItem
@@ -207,7 +207,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             total_paid=Sum('paid_amount'),
             count=Count('id'),  # conteo aproximado
         )
-        by_status = list(qs.values('status').annotate(count=models.Count('id'), total=Sum('total')))
+        by_status = list(qs.values('status').annotate(count=Count('id'), total=Sum('total')))
 
         return Response({
             'total_sales': float(totals['total_sales'] or 0),

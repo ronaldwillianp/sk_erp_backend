@@ -99,7 +99,7 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",  # ¡IMPORTANTE para archivos!
     ],
-"DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+"DEFAULT_PAGINATION_CLASS": "configuration.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
