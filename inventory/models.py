@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 
 class Warehouse(models.Model):
@@ -201,3 +202,64 @@ class ProductWarehouseStock(models.Model):
 
     def __str__(self):
         return f"{self.product.sku} | {self.warehouse.code} | {self.presentation.measure_unit.short_name}: {self.quantity}"
+
+class StockDocument(models.Model):
+    """Documento padre para entradas/salidas/traslados/ajustes multi-producto"""
+    TYPE_CHOICES = [
+        ('ENTRY', 'Entrada'),
+        ('EXIT', 'Salida'),
+        ('TRANSFER', 'Traslado'),
+        ('ADJUSTMENT', 'Ajuste'),
+    ]
+    
+    number = models.CharField(max_length=20, unique=True, editable=False)
+    document_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='stock_documents_origin')
+    destination_warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.PROTECT, 
+        related_name='stock_documents_destination',
+        null=True, blank=True
+    )
+    supplier = models.ForeignKey(
+        'Supplier', on_delete=models.SET_NULL, 
+        null=True, blank=True, related_name='stock_documents'
+    )
+    reference = models.CharField(max_length=100, blank=True, default='', help_text='Referencia externa')
+    notes = models.TextField(blank=True, default='')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, 
+        null=True, related_name='stock_documents_created'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_document_type_display()} {self.number}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            prefixes = {'ENTRY': 'ENT', 'EXIT': 'SAL', 'TRANSFER': 'TRA', 'ADJUSTMENT': 'AJU'}
+            prefix = prefixes.get(self.document_type, 'DOC')
+            last = StockDocument.objects.filter(document_type=self.document_type).order_by('-id').first()
+            next_num = 1
+            if last and last.number:
+                try:
+                    next_num = int(last.number.split('-')[1]) + 1
+                except (IndexError, ValueError):
+                    next_num = 1
+            self.number = f"{prefix}-{next_num:05d}"
+        super().save(*args, **kwargs)
+
+
+class StockDocumentLine(models.Model):
+    """Línea de un documento de stock"""
+    document = models.ForeignKey(StockDocument, on_delete=models.CASCADE, related_name='lines')
+    product = models.ForeignKey('Product', on_delete=models.PROTECT)
+    presentation = models.ForeignKey('ProductPresentation', on_delete=models.PROTECT)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    def __str__(self):
+        return f"{self.product.name} x{self.quantity}"

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from configuration.models import Province, Municipality, Category, MeasureUnit
 from configuration.serializers import ProvinceSerializer, MunicipalityLiteSerializer, CategoryLiteSerializer, MeasureUnitSerializer
-from .models import Warehouse, Supplier, Product, ProductPresentation, ProductWarehouseStock, StockMovement
+from .models import StockDocument, StockDocumentLine, Warehouse, Supplier, Product, ProductPresentation, ProductWarehouseStock, StockMovement
 from decimal import Decimal
 
 # ============================================
@@ -405,3 +405,77 @@ class StockMovementSerializer(serializers.ModelSerializer):
             cost_per_unit = stock.total_value / (stock.quantity + abs(quantity))
             stock.total_value += quantity * cost_per_unit
         stock.save()
+
+# ============================================
+# STOCK DOCUMENT (Vales multi-producto)
+# ============================================
+class StockDocumentLineSerializer(serializers.ModelSerializer):
+    product_detail = ProductSerializer(source='product', read_only=True)
+    presentation_detail = ProductPresentationSerializer(source='presentation', read_only=True)
+
+    class Meta:
+        model = StockDocumentLine
+        fields = ['id', 'product', 'product_detail', 'presentation', 'presentation_detail', 'quantity', 'unit_cost']
+
+class StockDocumentSerializer(serializers.ModelSerializer):
+    lines = StockDocumentLineSerializer(many=True, read_only=True)
+    warehouse_detail = WarehouseSerializer(source='warehouse', read_only=True)
+    destination_warehouse_detail = WarehouseSerializer(source='destination_warehouse', read_only=True)
+    supplier_detail = SupplierSerializer(source='supplier', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True, default='—')
+
+    class Meta:
+        model = StockDocument
+        fields = '__all__'
+
+class StockDocumentCreateSerializer(serializers.Serializer):
+    """Serializer para crear vale con múltiples líneas"""
+    document_type = serializers.ChoiceField(choices=['ENTRY', 'EXIT', 'TRANSFER', 'ADJUSTMENT'])
+    warehouse_id = serializers.IntegerField()
+    destination_warehouse_id = serializers.IntegerField(required=False, allow_null=True)
+    supplier_id = serializers.IntegerField(required=False, allow_null=True)
+    reference = serializers.CharField(required=False, allow_blank=True, default='')
+    notes = serializers.CharField(required=False, allow_blank=True, default='')
+    items = serializers.ListField(child=serializers.DictField(), min_length=1)
+
+    def validate(self, data):
+        doc_type = data.get('document_type')
+        
+        # Validar almacén destino para traslados
+        if doc_type == 'TRANSFER':
+            if not data.get('destination_warehouse_id'):
+                raise serializers.ValidationError({'destination_warehouse_id': 'Requerido para traslados'})
+            if data['warehouse_id'] == data['destination_warehouse_id']:
+                raise serializers.ValidationError({'destination_warehouse_id': 'El destino debe ser diferente al origen'})
+        
+        # Validar proveedor opcional solo para entradas
+        if doc_type == 'ENTRY' and data.get('supplier_id'):
+            if not Supplier.objects.filter(id=data['supplier_id']).exists():
+                raise serializers.ValidationError({'supplier_id': 'Proveedor no encontrado'})
+        
+        # Validar líneas
+        items = data.get('items', [])
+        for i, item in enumerate(items):
+            if not item.get('product_id'):
+                raise serializers.ValidationError({'items': f"Línea {i+1}: producto requerido"})
+            if not item.get('presentation_id'):
+                raise serializers.ValidationError({'items': f"Línea {i+1}: presentación requerida"})
+            try:
+                qty = float(item.get('quantity', 0))
+                if qty == 0:
+                    raise serializers.ValidationError({'items': f"Línea {i+1}: cantidad no puede ser 0"})
+                if doc_type in ['ENTRY', 'EXIT', 'TRANSFER'] and qty < 0:
+                    raise serializers.ValidationError({'items': f"Línea {i+1}: cantidad no puede ser negativa"})
+            except (ValueError, TypeError):
+                raise serializers.ValidationError({'items': f"Línea {i+1}: cantidad inválida"})
+            
+            # Costo requerido para entradas
+            if doc_type == 'ENTRY':
+                try:
+                    cost = float(item.get('unit_cost', 0))
+                    if cost < 0:
+                        raise serializers.ValidationError({'items': f"Línea {i+1}: costo no puede ser negativo"})
+                except (ValueError, TypeError):
+                    raise serializers.ValidationError({'items': f"Línea {i+1}: costo inválido"})
+        
+        return data

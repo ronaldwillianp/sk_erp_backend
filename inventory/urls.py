@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 from .viewsets import (
-    WarehouseViewSet, SupplierViewSet, ProductViewSet,
+    StockDocumentViewSet, WarehouseViewSet, SupplierViewSet, ProductViewSet,
     StockViewSet, ConversionViewSet, StockMovementViewSet
 )
 from .views import download_template, import_data
@@ -13,6 +13,7 @@ router.register(r'products', ProductViewSet, basename='product')
 router.register(r'stock', StockViewSet, basename='stock')
 router.register(r'conversions', ConversionViewSet, basename='conversion')
 router.register(r'movements', StockMovementViewSet, basename='movement')
+router.register(r'stock-documents', StockDocumentViewSet, basename='stock-document')
 
 urlpatterns = [
     path('', include(router.urls)),

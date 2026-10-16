@@ -9,16 +9,16 @@ from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField, Cas
 from django.db.models.functions import Coalesce
 from .label_generator import generate_product_labels
 from django.http import HttpResponse
+from rest_framework.exceptions import ValidationError
 
 from .models import (
-    Product, Warehouse, Supplier, ProductPresentation, ProductWarehouseStock, StockMovement
+    Product, Warehouse, Supplier, ProductPresentation, ProductWarehouseStock, StockMovement, StockDocument, StockDocumentLine
 )
 
 from .serializers import (
     ProductSerializer, WarehouseSerializer, SupplierSerializer,
-    ProductWarehouseStockSerializer, ConversionSerializer, StockMovementSerializer
+    ProductWarehouseStockSerializer, ConversionSerializer, StockMovementSerializer, StockDocumentSerializer, StockDocumentCreateSerializer
 )
-
 
 class WarehouseViewSet(viewsets.ModelViewSet):
     queryset = Warehouse.objects.select_related('province', 'municipality').order_by('name')
@@ -496,3 +496,203 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             'message': f'{count} movimientos eliminados correctamente',
             'deleted_count': count,
         }, status=status.HTTP_200_OK)   
+
+class StockDocumentViewSet(viewsets.ModelViewSet):
+    queryset = StockDocument.objects.select_related(
+        'warehouse', 'destination_warehouse', 'supplier', 'created_by'
+    ).prefetch_related('lines__product', 'lines__presentation')
+    serializer_class = StockDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ['document_type', 'warehouse', 'supplier']
+    search_fields = ['number', 'reference', 'notes']
+    ordering = ['-created_at']
+
+    @action(detail=False, methods=['post'], url_path='create-with-lines')
+    def create_with_lines(self, request):
+        """Crea un vale con múltiples líneas y genera los movimientos correspondientes."""
+        serializer = StockDocumentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        doc_type = data['document_type']
+        
+        # Validar almacén origen
+        try:
+            warehouse = Warehouse.objects.get(id=data['warehouse_id'])
+        except Warehouse.DoesNotExist:
+            return Response({'error': 'Almacén origen no encontrado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar almacén destino (solo para traslados)
+        destination_warehouse = None
+        if doc_type == 'TRANSFER':
+            try:
+                destination_warehouse = Warehouse.objects.get(id=data['destination_warehouse_id'])
+            except Warehouse.DoesNotExist:
+                return Response({'error': 'Almacén destino no encontrado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar proveedor (opcional, solo entradas)
+        supplier = None
+        if data.get('supplier_id'):
+            try:
+                supplier = Supplier.objects.get(id=data['supplier_id'])
+            except Supplier.DoesNotExist:
+                return Response({'error': 'Proveedor no encontrado'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            # Crear documento padre
+            document = StockDocument.objects.create(
+                document_type=doc_type,
+                warehouse=warehouse,
+                destination_warehouse=destination_warehouse,
+                supplier=supplier,
+                reference=data.get('reference', ''),
+                notes=data.get('notes', ''),
+                created_by=request.user,
+            )
+
+            # Procesar cada línea
+            for item_data in data['items']:
+                product = Product.objects.get(id=item_data['product_id'])
+                presentation = ProductPresentation.objects.get(id=item_data['presentation_id'])
+                quantity = Decimal(str(item_data['quantity']))
+                unit_cost = Decimal(str(item_data.get('unit_cost', 0)))
+
+                # Verificar stock para salidas y traslados
+                if doc_type in ['EXIT', 'TRANSFER']:
+                    stock_record = ProductWarehouseStock.objects.filter(
+                        product=product,
+                        warehouse=warehouse,
+                        presentation=presentation,
+                    ).first()
+                    available = stock_record.quantity if stock_record else Decimal('0')
+                    needed = abs(quantity) if quantity < 0 else quantity
+                    if available < needed:
+                        raise ValidationError(
+                            f'Stock insuficiente para {product.name}. Disponible: {available}, solicitado: {needed}'
+                        )
+
+                # Para ajustes negativos, verificar stock también
+                if doc_type == 'ADJUSTMENT' and quantity < 0:
+                    stock_record = ProductWarehouseStock.objects.filter(
+                        product=product,
+                        warehouse=warehouse,
+                        presentation=presentation,
+                    ).first()
+                    available = stock_record.quantity if stock_record else Decimal('0')
+                    if available < abs(quantity):
+                        raise ValidationError(
+                            f'Stock insuficiente para ajuste de {product.name}. Disponible: {available}'
+                        )
+
+                # Crear línea del documento
+                StockDocumentLine.objects.create(
+                    document=document,
+                    product=product,
+                    presentation=presentation,
+                    quantity=quantity,
+                    unit_cost=unit_cost,
+                )
+
+                # Generar movimiento(s)
+                if doc_type == 'TRANSFER':
+                    # Traslado: genera movimiento de tipo TRANSFER
+                    movement = StockMovement.objects.create(
+                        movement_type='TRANSFER',
+                        product=product,
+                        presentation=presentation,
+                        warehouse=warehouse,
+                        destination_warehouse=destination_warehouse,
+                        destination_presentation=presentation,
+                        quantity=abs(quantity),
+                        unit_cost=unit_cost,
+                        reference=f"Vale {document.number}",
+                        notes=data.get('notes', ''),
+                        user=request.user,
+                    )
+                    # Actualizar stock manualmente (salida de origen + entrada en destino)
+                    self._apply_transfer(movement)
+                else:
+                    # ENTRY, EXIT, ADJUSTMENT
+                    movement = StockMovement.objects.create(
+                        movement_type=doc_type,
+                        product=product,
+                        presentation=presentation,
+                        warehouse=warehouse,
+                        quantity=quantity,
+                        unit_cost=unit_cost,
+                        reference=f"Vale {document.number}",
+                        notes=data.get('notes', ''),
+                        user=request.user,
+                    )
+                    self._apply_movement(movement)
+
+        return Response(
+            StockDocumentSerializer(document).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    def _apply_movement(self, movement):
+        """Aplica un movimiento simple (ENTRY, EXIT, ADJUSTMENT) al stock."""
+        stock, created = ProductWarehouseStock.objects.get_or_create(
+            product=movement.product,
+            warehouse=movement.warehouse,
+            presentation=movement.presentation,
+            defaults={'quantity': Decimal('0'), 'total_value': Decimal('0')}
+        )
+
+        if movement.movement_type == 'ENTRY':
+            stock.quantity += movement.quantity
+            stock.total_value += movement.quantity * movement.unit_cost
+        elif movement.movement_type == 'EXIT':
+            if stock.quantity > 0:
+                cost_per_unit = stock.total_value / stock.quantity
+            else:
+                cost_per_unit = Decimal('0')
+            stock.quantity -= movement.quantity
+            stock.total_value -= movement.quantity * cost_per_unit
+        elif movement.movement_type == 'ADJUSTMENT':
+            stock.quantity += movement.quantity
+            if movement.quantity > 0 and movement.unit_cost:
+                stock.total_value += movement.quantity * movement.unit_cost
+
+        # Eliminar si queda en 0
+        if stock.quantity <= 0:
+            stock.delete()
+        else:
+            stock.save()
+
+    def _apply_transfer(self, movement):
+        """Aplica un traslado: salida del origen + entrada al destino."""
+        # Salida del origen
+        from_stock = ProductWarehouseStock.objects.filter(
+            product=movement.product,
+            warehouse=movement.warehouse,
+            presentation=movement.presentation,
+        ).first()
+
+        if from_stock:
+            if from_stock.quantity > 0:
+                cost_per_unit = from_stock.total_value / from_stock.quantity
+            else:
+                cost_per_unit = Decimal('0')
+            value_transferred = movement.quantity * cost_per_unit
+
+            from_stock.quantity -= movement.quantity
+            from_stock.total_value -= value_transferred
+            if from_stock.quantity <= 0:
+                from_stock.delete()
+            else:
+                from_stock.save()
+        else:
+            value_transferred = Decimal('0')
+
+        # Entrada al destino
+        to_stock, _ = ProductWarehouseStock.objects.get_or_create(
+            product=movement.product,
+            warehouse=movement.destination_warehouse,
+            presentation=movement.destination_presentation or movement.presentation,
+            defaults={'quantity': Decimal('0'), 'total_value': Decimal('0')}
+        )
+        to_stock.quantity += movement.quantity
+        to_stock.total_value += value_transferred
+        to_stock.save()
