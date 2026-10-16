@@ -7,6 +7,8 @@ from django.utils.dateparse import parse_date
 from .utils import reset_sequence
 from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
+from .label_generator import generate_product_labels
+from django.http import HttpResponse
 
 from .models import (
     Product, Warehouse, Supplier, ProductPresentation, ProductWarehouseStock, StockMovement
@@ -16,7 +18,6 @@ from .serializers import (
     ProductSerializer, WarehouseSerializer, SupplierSerializer,
     ProductWarehouseStockSerializer, ConversionSerializer, StockMovementSerializer
 )
-
 
 
 class WarehouseViewSet(viewsets.ModelViewSet):
@@ -142,7 +143,36 @@ class ProductViewSet(viewsets.ModelViewSet):
             'stock_deleted': stock_count,
             'movements_deleted': movement_count,
         }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='generate-labels')
+    def generate_labels(self, request):
+        """
+        Genera un PDF con etiquetas de productos seleccionados.
+        Body: { "product_ids": [1, 2, 3] }
+        """
+        product_ids = request.data.get('product_ids', [])
         
+        if not product_ids or not isinstance(product_ids, list):
+            return Response(
+                {'error': 'Debe proporcionar una lista de product_ids'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            pdf_buffer = generate_product_labels(product_ids)
+            
+            response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="etiquetas_productos.pdf"'
+            return response
+            
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': f'Error generando etiquetas: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class StockViewSet(viewsets.ReadOnlyModelViewSet):
     """Consulta de stock actual por producto/almacén/presentación"""
     queryset = ProductWarehouseStock.objects.select_related(

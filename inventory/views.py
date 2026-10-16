@@ -53,12 +53,8 @@ def import_data(request, import_type: str):
 
     file_obj = request.FILES.get('file')
     if not file_obj:
-        return Response(
-            {'error': 'No se proporcionó archivo'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({'error': 'No se proporcionó archivo'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Validar extensión
     filename = file_obj.name.lower()
     if not filename.endswith(('.csv', '.xlsx', '.xls')):
         return Response(
@@ -69,7 +65,12 @@ def import_data(request, import_type: str):
     importer_class, _, _ = IMPORTER_MAP[import_type]
 
     try:
-        importer = importer_class(file_obj, file_obj.name)
+        # Pasar el usuario solo al ProductImporter (los demás no lo necesitan)
+        if importer_class == ProductImporter:
+            importer = importer_class(file_obj, file_obj.name, user=request.user)
+        else:
+            importer = importer_class(file_obj, file_obj.name)
+
         result = importer.import_all()
         return Response(result, status=status.HTTP_200_OK)
     except ImportErrorException as e:
