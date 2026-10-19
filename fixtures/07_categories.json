@@ -17,7 +17,7 @@
         "name": "Ingreso por servicios",
         "category_type": "INCOME",
         "parent": null,
-        "description": "Prestaci¾n de servicios (reparaciones, instalaciones, etc.)",
+        "description": "Prestación de servicios (reparaciones, instalaciones, etc.)",
         "enabled": true
     }
 },
@@ -39,7 +39,7 @@
         "name": "Costo de producto",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "Costo de mercancÝa vendida",
+        "description": "Costo de mercancía vendida",
         "enabled": true
     }
 },
@@ -50,7 +50,7 @@
         "name": "Gastos de Electricidad",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "Consumo elÚctrico del negocio",
+        "description": "Consumo eléctrico del negocio",
         "enabled": true
     }
 },
@@ -83,7 +83,7 @@
         "name": "Agua y comunicaciones",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "Agua, telÚfono, internet",
+        "description": "Agua, teléfono, internet",
         "enabled": true
     }
 },
@@ -91,10 +91,10 @@
     "model": "configuration.category",
     "pk": 9,
     "fields": {
-        "name": "Transporte y logÝstica",
+        "name": "Transporte y logística",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "Combustible, fletes, envÝos, mensajerÝa",
+        "description": "Combustible, fletes, envíos, mensajería",
         "enabled": true
     }
 },
@@ -105,7 +105,7 @@
         "name": "Mantenimiento y reparaciones",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "Reparaciones del local, equipos, vehÝculos",
+        "description": "Reparaciones del local, equipos, vehículos",
         "enabled": true
     }
 },
@@ -127,7 +127,7 @@
         "name": "Suministros de oficina",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "PapelerÝa, limpieza, insumos operativos",
+        "description": "Papelería, limpieza, insumos operativos",
         "enabled": true
     }
 },
@@ -157,10 +157,10 @@
     "model": "configuration.category",
     "pk": 15,
     "fields": {
-        "name": "Depreciaci¾n de activos",
+        "name": "Depreciación de activos",
         "category_type": "EXPENSE",
         "parent": null,
-        "description": "Desgaste de equipos, mobiliario, vehÝculo",
+        "description": "Desgaste de equipos, mobiliario, vehículo",
         "enabled": true
     }
 },
@@ -190,10 +190,10 @@
     "model": "configuration.category",
     "pk": 18,
     "fields": {
-        "name": "Electr¾nica",
+        "name": "Electrónica",
         "category_type": "PRODUCT",
         "parent": null,
-        "description": "Componentes, cables, dispositivos, accesorios electr¾nicos",
+        "description": "Componentes, cables, dispositivos, accesorios electrónicos",
         "enabled": true
     }
 },
@@ -204,7 +204,7 @@
         "name": "Herramientas",
         "category_type": "PRODUCT",
         "parent": null,
-        "description": "Manuales, elÚctricas, de medici¾n",
+        "description": "Manuales, eléctricas, de medición",
         "enabled": true
     }
 },
@@ -215,7 +215,7 @@
         "name": "FerreterÝa",
         "category_type": "PRODUCT",
         "parent": null,
-        "description": "Tornillos, clavos, cerraduras, pinturas, plomerÝa",
+        "description": "Tornillos, clavos, cerraduras, pinturas, plomería",
         "enabled": true
     }
 },
