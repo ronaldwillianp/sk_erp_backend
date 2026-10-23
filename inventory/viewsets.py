@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils.dateparse import parse_date
 from .utils import reset_sequence
-from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField, Case, When, Value, CharField
+from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField, Case, When, Value, CharField, F, Sum, Exists, OuterRef, Q
 from django.db.models.functions import Coalesce
 from .label_generator import generate_product_labels
 from django.http import HttpResponse
@@ -203,6 +203,57 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {'error': f'Error generando etiquetas: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['get'], url_path='with-stock')
+    def with_stock(self, request):
+        """
+        Devuelve productos que tienen stock > 0 en un almacén específico.
+        Query params:
+        - warehouse: ID del almacén (requerido)
+        - is_service: filtrar por tipo (opcional)
+        """
+        warehouse_id = request.query_params.get('warehouse')
+        is_service = request.query_params.get('is_service')
+        
+        if not warehouse_id:
+            return Response(
+                {'error': 'El parámetro warehouse es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Subquery para verificar si existe stock > 0 en ese almacén
+        stock_exists = ProductWarehouseStock.objects.filter(
+            product=OuterRef('pk'),
+            warehouse_id=warehouse_id,
+            quantity__gt=0
+        )
+        
+        # Filtrar productos que tienen stock en ese almacén
+        queryset = Product.objects.filter(
+            Exists(stock_exists),
+            enabled=True
+        )
+        
+        # Filtrar por tipo si se especifica
+        if is_service is not None:
+            is_service_bool = is_service.lower() in ('true', '1', 'yes')
+            queryset = queryset.filter(is_service=is_service_bool)
+        
+        # Aplicar búsqueda y ordenamiento estándar
+        search = request.query_params.get('search', '')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(sku__icontains=search) | Q(barcode__icontains=search)
+            )
+        
+        # Paginación
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ProductSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = ProductSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 class StockViewSet(viewsets.ReadOnlyModelViewSet):
     """Consulta de stock actual por producto/almacén/presentación"""
