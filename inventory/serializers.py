@@ -93,7 +93,6 @@ class ProductPresentationSerializer(serializers.ModelSerializer):
             'conversion_factor', 'sale_price', 'is_default'
         ]
 
-
 # ============================================
 # PRODUCT (con presentaciones anidadas)
 # ============================================
@@ -101,6 +100,15 @@ class ProductSerializer(serializers.ModelSerializer):
     # === Lectura ===
     category = CategoryLiteSerializer(read_only=True)
     presentations = ProductPresentationSerializer(many=True, required=False)
+    
+    # === NUEVO: Stock anotado desde el viewset (solo lectura) ===
+    warehouse_stock = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        read_only=True, 
+        required=False, 
+        allow_null=True
+    )
 
     # === Escritura ===
     category_id = serializers.PrimaryKeyRelatedField(
@@ -116,10 +124,14 @@ class ProductSerializer(serializers.ModelSerializer):
             'category', 'category_id',
             'cost_price', 'sale_price', 'min_stock',
             'is_service', 'description', 'enabled',
-            'presentations'
+            'presentations',
+            'warehouse_stock',  # <--- Agregar aquí
         ]
 
     def create(self, validated_data):
+        # warehouse_stock es read_only, así que no vendrá en validated_data
+        validated_data.pop('warehouse_stock', None)
+        
         presentations_data = validated_data.pop('presentations', [])
         product = Product.objects.create(**validated_data)
 
@@ -130,6 +142,8 @@ class ProductSerializer(serializers.ModelSerializer):
         return product
 
     def update(self, instance, validated_data):
+        validated_data.pop('warehouse_stock', None)
+        
         presentations_data = validated_data.pop('presentations', None)
 
         # Actualizar campos del producto
@@ -176,11 +190,6 @@ class ProductSerializer(serializers.ModelSerializer):
         else:
             product.presentations.all().delete()
 
-
-
-
-
-
 # ============================================
 # PRODUCT WAREHOUSE STOCK
 # ============================================
@@ -199,7 +208,6 @@ class ProductWarehouseStockSerializer(serializers.ModelSerializer):
 
     def get_presentations_count(self, obj):
         return obj.product.presentations.count()
-
 
 # ============================================
 # CONVERSION (entrada de datos)

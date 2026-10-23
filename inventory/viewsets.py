@@ -5,11 +5,11 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils.dateparse import parse_date
 from .utils import reset_sequence
-from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField, Case, When, Value, CharField, F, Sum, Exists, OuterRef, Q
+from django.db.models import Subquery, Sum, Count, F, ExpressionWrapper, DecimalField, Case, When, Value, CharField, F, Sum, Exists, OuterRef, Q
 from django.db.models.functions import Coalesce
 from .label_generator import generate_product_labels
 from django.http import HttpResponse
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError  
 
 from .models import (
     Product, Warehouse, Supplier, ProductPresentation, ProductWarehouseStock, StockMovement, StockDocument, StockDocumentLine
@@ -114,12 +114,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+
     @action(detail=False, methods=['delete'], url_path='purge')
     def purge(self, request):
         """
-        Elimina TODOS los productos, presentaciones, stock, movimientos y vales.
+        Elimina TODOS los datos del sistema (Ventas e Inventario).
         Reinicia los IDs desde 1. Acción destructiva total.
         """
+        # Importamos modelos de otras apps para limpiar dependencias
+        from sales.models import InvoiceItem, Invoice
         from .models import (
             StockDocumentLine, StockDocument, StockMovement,
             ProductWarehouseStock, ProductPresentation, Product
@@ -127,45 +130,44 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         try:
             with transaction.atomic():
-                # 1. Eliminar líneas de documentos de stock (dependen de Product)
-                StockDocumentLine.objects.all().delete()
+                # --- FASE 1: LIMPIAR VENTAS (Dependen de Productos/Presentaciones) ---
+                InvoiceItem.objects.all().delete() # Borra líneas de factura primero
+                Invoice.objects.all().delete()     # Luego borra las facturas
                 
-                # 2. Eliminar documentos de stock (vales)
-                StockDocument.objects.all().delete()
+                # --- FASE 2: LIMPIAR INVENTARIO Y DOCUMENTOS ---
+                StockDocumentLine.objects.all().delete() # Líneas de vales
+                StockDocument.objects.all().delete()     # Vales padre
+                StockMovement.objects.all().delete()     # Historial de movimientos
+                ProductWarehouseStock.objects.all().delete() # Stock actual
                 
-                # 3. Eliminar movimientos de inventario
-                StockMovement.objects.all().delete()
+                # --- FASE 3: LIMPIAR PRODUCTOS ---
+                ProductPresentation.objects.all().delete() # Presentaciones (ya sin facturas asociadas)
+                Product.objects.all().delete()             # Productos
                 
-                # 4. Eliminar stock por almacén
-                ProductWarehouseStock.objects.all().delete()
-                
-                # 5. Eliminar presentaciones (dependen de Product)
-                ProductPresentation.objects.all().delete()
-                
-                # 6. Eliminar productos
-                Product.objects.all().delete()
-                
-                # 7. Reiniciar secuencias de IDs (PostgreSQL)
+                # --- FASE 4: REINICIAR SECUENCIAS (PostgreSQL) ---
                 from django.db import connection
                 with connection.cursor() as cursor:
                     tables_to_reset = [
-                        'inventory_product',
-                        'inventory_productpresentation',
-                        'inventory_productwarehousestock',
-                        'inventory_stockmovement',
-                        'inventory_stockdocument',
+                        'sales_invoiceitem',
+                        'sales_invoice',
                         'inventory_stockdocumentline',
+                        'inventory_stockdocument',
+                        'inventory_stockmovement',
+                        'inventory_productwarehousestock',
+                        'inventory_productpresentation',
+                        'inventory_product',
                     ]
                     for table in tables_to_reset:
                         try:
+                            # Intenta reiniciar la secuencia de ID a 1
                             cursor.execute(
                                 f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), 1, false)"
                             )
                         except Exception:
-                            pass  # Ignorar si la tabla no existe o no es PostgreSQL
+                            pass  # Ignora errores si la tabla no existe o es SQLite
                 
                 return Response({
-                    'message': 'Todos los productos, presentaciones, stock, movimientos y vales han sido eliminados. IDs reiniciados desde 1.',
+                    'message': 'Sistema purgado completamente. Todos los registros eliminados e IDs reiniciados.',
                     'status': 'success'
                 })
                 
@@ -245,6 +247,17 @@ class ProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(name__icontains=search) | Q(sku__icontains=search) | Q(barcode__icontains=search)
             )
+
+        # === NUEVO: Anotar la cantidad de stock en este almacén ===
+        stock_annotation = Subquery(
+            ProductWarehouseStock.objects.filter(
+                product=OuterRef('pk'),
+                warehouse_id=warehouse_id
+            ).values('product').annotate(total=Sum('quantity')).values('total')[:1],
+            output_field=DecimalField()
+        )
+        queryset = queryset.annotate(warehouse_stock=stock_annotation)
+        # ==========================================================
         
         # Paginación
         page = self.paginate_queryset(queryset)

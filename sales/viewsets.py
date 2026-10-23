@@ -1,17 +1,18 @@
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db import models as db_models
-from django.db.models import Count, Sum
 from decimal import Decimal
-from django.db import transaction
+from django.utils import timezone
 from .models import Customer, Invoice, InvoiceItem
 from .serializers import (
     CustomerSerializer, InvoiceSerializer, InvoiceCreateSerializer
 )
-from inventory.models import Product, ProductPresentation, ProductWarehouseStock, StockMovement
+from inventory.models import (
+    Product, ProductPresentation, ProductWarehouseStock, StockMovement, 
+    StockDocument, StockDocumentLine
+)
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
@@ -38,7 +39,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='create-with-items')
     def create_with_items(self, request):
         """
-        Crea una factura con sus líneas y descuenta stock automáticamente.
+        Crea una factura, su vale asociado y descuenta stock.
+        Todo dentro de una transacción atómica: si falla algo, no se crea nada.
         """
         serializer = InvoiceCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -49,30 +51,38 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         except Customer.DoesNotExist:
             return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Determinar estado inicial (por defecto DRAFT, pero permite PAID)
+        initial_status = data.get('status', 'DRAFT')
+        valid_statuses = [s[0] for s in Invoice.STATUS_CHOICES]
+        if initial_status not in valid_statuses:
+            initial_status = 'DRAFT'
+
+        issue_date = data.get('issue_date') or timezone.now().date()
+
         with transaction.atomic():
-            # Crear factura
+            # 1. Crear Factura
             invoice = Invoice.objects.create(
-                customer=customer,
-                due_date=data.get('due_date'),
-                notes=data.get('notes', ''),
-                created_by=request.user,
-                status='DRAFT',
+            customer=customer,
+            issue_date=issue_date,
+            due_date=data.get('due_date'),
+            notes=data.get('notes', ''),
+            created_by=request.user,
+            status=initial_status,
             )
 
             subtotal = Decimal('0')
+            items_created = []
 
-            # Crear líneas y descontar stock
+            # 2. Procesar líneas y validar stock
             for item_data in data['items']:
                 product = Product.objects.get(id=item_data['product_id'])
                 presentation = ProductPresentation.objects.get(id=item_data['presentation_id'])
                 warehouse_id = item_data['warehouse_id']
 
-                # ✅ Convertir todo a Decimal
                 quantity = Decimal(str(item_data['quantity']))
                 unit_price = Decimal(str(item_data.get('unit_price', product.sale_price)))
-                discount_pct = Decimal(str(item_data.get('discount_percent', 0)))
-
-                # Verificar stock disponible
+                
+                # Verificar stock
                 stock_record = ProductWarehouseStock.objects.filter(
                     product=product,
                     warehouse_id=warehouse_id,
@@ -81,9 +91,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
                 available = stock_record.quantity if stock_record else Decimal('0')
                 if available < quantity:
-                    return Response({
-                        'error': f'Stock insuficiente para {product.name}. Disponible: {available}, solicitado: {quantity}'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                    # Lanzar excepción para provocar rollback de toda la transacción
+                    raise Exception(f'Stock insuficiente para {product.name}. Disponible: {available}, solicitado: {quantity}')
 
                 # Crear línea de factura
                 line = InvoiceItem.objects.create(
@@ -93,34 +102,76 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     warehouse_id=warehouse_id,
                     quantity=quantity,
                     unit_price=unit_price,
-                    discount_percent=discount_pct,
+                    discount_percent=Decimal(str(item_data.get('discount_percent', 0))),
                 )
-                subtotal += line.line_total  # line_total ya es Decimal (viene del modelo)
+                subtotal += line.line_total
+                items_created.append({
+                    'product': product,
+                    'presentation': presentation,
+                    'warehouse_id': warehouse_id,
+                    'quantity': quantity,
+                    'unit_cost': Decimal(str(product.cost_price)),
+                })
 
-                # ✅ Descontar stock (Decimal -= Decimal)
+            # Actualizar totales
+            invoice.subtotal = subtotal
+            invoice.tax_total = Decimal('0')
+            invoice.total = subtotal
+            invoice.save()
+
+            # 3. Generar Vale de Salida (StockDocument) asociado a la factura
+            # Buscamos o creamos un documento tipo EXIT vinculado a esta factura
+            doc_ref = f"Factura {invoice.number}"
+            
+            # Creamos el documento padre
+            stock_doc = StockDocument.objects.create(
+                document_type='EXIT',
+                warehouse_id=data['items'][0]['warehouse_id'], # Usamos el almacén de la primera línea como referencia principal
+                reference=doc_ref,
+                notes=f"Generado automáticamente por factura {invoice.number}",
+                created_by=request.user,
+            )
+
+            # 4. Aplicar movimientos de stock y líneas del vale
+            for item_info in items_created:
+                product = item_info['product']
+                presentation = item_info['presentation']
+                warehouse_id = item_info['warehouse_id']
+                quantity = item_info['quantity']
+                unit_cost = item_info['unit_cost']
+
+                # A. Crear línea del vale
+                StockDocumentLine.objects.create(
+                    document=stock_doc,
+                    product=product,
+                    presentation=presentation,
+                    quantity=quantity,
+                    unit_cost=unit_cost,
+                )
+
+                # B. Descontar stock físicamente
+                stock_record = ProductWarehouseStock.objects.get(
+                    product=product,
+                    warehouse_id=warehouse_id,
+                    presentation=presentation,
+                )
                 stock_record.quantity -= quantity
                 if stock_record.quantity <= 0:
                     stock_record.delete()
                 else:
                     stock_record.save()
 
-                # Registrar movimiento de salida
+                # C. Registrar movimiento individual
                 StockMovement.objects.create(
                     movement_type='EXIT',
                     product=product,
                     presentation=presentation,
                     warehouse_id=warehouse_id,
                     quantity=quantity,
-                    unit_cost=Decimal(str(product.cost_price)),
-                    reference=f"Venta {invoice.number}",
+                    unit_cost=unit_cost,
+                    reference=doc_ref,
                     user=request.user,
                 )
-
-            # ✅ Actualizar totales de factura (Decimal)
-            invoice.subtotal = subtotal
-            invoice.tax_total = Decimal('0')  # TODO: calcular impuestos
-            invoice.total = subtotal + invoice.tax_total
-            invoice.save()
 
         return Response(
             InvoiceSerializer(invoice).data,
@@ -140,14 +191,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Definir transiciones válidas de estado
         VALID_TRANSITIONS = {
-            'DRAFT': ['SENT', 'CANCELLED'],
+            'DRAFT': ['SENT', 'CANCELLED', 'PAID'],
             'SENT': ['PAID', 'PARTIAL', 'OVERDUE', 'CANCELLED'],
             'OVERDUE': ['PAID', 'PARTIAL', 'CANCELLED'],
             'PARTIAL': ['PAID', 'CANCELLED'],
-            'PAID': [],  # No se puede cambiar después de pagar
-            'CANCELLED': [],  # No se puede cambiar después de cancelar
+            'PAID': [],
+            'CANCELLED': [],
         }
 
         if new_status not in VALID_TRANSITIONS.get(invoice.status, []):
@@ -157,31 +207,21 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             )
 
         with transaction.atomic():
-            # Si se cancela, restaurar stock
             if new_status == 'CANCELLED':
+                # 1. Restaurar stock
                 for item in invoice.items.all():
                     stock, created = ProductWarehouseStock.objects.get_or_create(
                         product=item.product,
                         warehouse=item.warehouse,
                         presentation=item.presentation,
-                        defaults={
-                            'quantity': Decimal('0'),
-                            'total_value': Decimal('0')
-                        }
+                        defaults={'quantity': Decimal('0'), 'total_value': Decimal('0')}
                     )
-                    
-                    # Restaurar cantidad
                     stock.quantity += item.quantity
-                    
-                    # Recalcular valor total del stock
-                    # Usar el costo promedio actual del producto si existe
                     if stock.quantity > Decimal('0'):
                         current_avg_cost = Decimal(str(item.product.cost_price))
                         stock.total_value = stock.quantity * current_avg_cost
-                    
                     stock.save()
 
-                    # Movimiento de entrada (reversión)
                     StockMovement.objects.create(
                         movement_type='ENTRY',
                         product=item.product,
@@ -192,20 +232,107 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                         reference=f"Cancelación {invoice.number}",
                         user=request.user,
                     )
-
+                
+                # 2. Eliminar el vale de salida asociado (si existe)
+                from inventory.models import StockDocument
+                related_doc = StockDocument.objects.filter(
+                    reference=f"Factura {invoice.number}",
+                    document_type='EXIT'
+                ).first()
+                
+                if related_doc:
+                    related_doc.delete()
+            
+            # Si se marca como PAGADA, podríamos generar la transacción financiera aquí (futuro)
+            
             invoice.status = new_status
             invoice.save()
 
         return Response(InvoiceSerializer(invoice).data)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Elimina físicamente una factura y TODOS sus registros asociados:
+        - Movimientos de stock generados por la factura
+        - Vale (StockDocument) asociado
+        - Restaura el stock al inventario
+        
+        ⚠️ ACCIÓN DE ADMINISTRADOR - No deja rastro histórico
+        """
+        invoice = self.get_object()
+
+        # Validaciones de seguridad
+        if invoice.status == 'PAID':
+            return Response(
+                {'error': 'No se puede eliminar una factura pagada. Cancélela primero.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar consecutivos
+        try:
+            current_seq = int(invoice.number.split('-')[1])
+            next_invoices = Invoice.objects.filter(number__regex=r'^FAC-\d+$').exclude(pk=invoice.pk)
+            has_later_invoices = False
+            for inv in next_invoices:
+                try:
+                    seq = int(inv.number.split('-')[1])
+                    if seq > current_seq:
+                        has_later_invoices = True
+                        break
+                except:
+                    continue
+            
+            if has_later_invoices:
+                return Response({
+                    'error': 'No se puede eliminar esta factura porque existen facturas con números posteriores.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            pass
+
+        with transaction.atomic():
+            # 1. Borrar movimientos de stock asociados a esta factura
+            # ⚠️ IMPORTANTE: La referencia debe coincidir con la que se usa en create_with_items
+            # En create_with_items se usa: doc_ref = f"Factura {invoice.number}"
+            movements_deleted, _ = StockMovement.objects.filter(
+                reference=f"Factura {invoice.number}"  # ✅ Cambiado de "Venta" a "Factura"
+            ).delete()
+
+            # 2. Borrar vale (StockDocument) asociado
+            documents_deleted, _ = StockDocument.objects.filter(
+                reference=f"Factura {invoice.number}"
+            ).delete()
+
+            # 3. Restaurar stock físicamente (sin crear movimientos de reversión)
+            for item in invoice.items.all():
+                stock, created = ProductWarehouseStock.objects.get_or_create(
+                    product=item.product,
+                    warehouse=item.warehouse,
+                    presentation=item.presentation,
+                    defaults={'quantity': Decimal('0'), 'total_value': Decimal('0')}
+                )
+                stock.quantity += item.quantity
+                if stock.quantity > Decimal('0'):
+                    stock.total_value = stock.quantity * Decimal(str(item.product.cost_price))
+                stock.save()
+
+            # 4. Eliminar factura (las líneas se borran en cascada)
+            invoice.delete()
+
+        return Response(
+            {
+                'message': f'Factura {invoice.number} eliminada. Stock restaurado. '
+                           f'Se borraron {movements_deleted} movimientos y {documents_deleted} vales asociados.',
+            },
+            status=status.HTTP_200_OK
+        )
+
     @action(detail=False, methods=['get'], url_path='summary')
     def summary(self, request):
-        """Resumen de ventas"""
         qs = Invoice.objects.exclude(status='CANCELLED')
         totals = qs.aggregate(
             total_sales=Sum('total'),
             total_paid=Sum('paid_amount'),
-            count=Count('id'),  # conteo aproximado
+            count=Count('id'),
         )
         by_status = list(qs.values('status').annotate(count=Count('id'), total=Sum('total')))
 

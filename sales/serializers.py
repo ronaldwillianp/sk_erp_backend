@@ -46,9 +46,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 
 class InvoiceCreateSerializer(serializers.Serializer):
-    """Serializer para crear factura con líneas"""
     customer_id = serializers.IntegerField()
+    issue_date = serializers.DateField(required=False, allow_null=True)  # ← NUEVO
     due_date = serializers.DateField(required=False, allow_null=True)
+    status = serializers.ChoiceField(  # ← NUEVO
+        choices=['DRAFT', 'SENT', 'PAID'],
+        default='DRAFT'
+    )
     notes = serializers.CharField(required=False, allow_blank=True, default='')
     items = serializers.ListField(child=serializers.DictField(), min_length=1)
 
@@ -60,7 +64,10 @@ class InvoiceCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(f"Línea {i+1}: presentación requerida")
             if not item.get('warehouse_id'):
                 raise serializers.ValidationError(f"Línea {i+1}: almacén requerido")
-            qty = float(item.get('quantity', 0))
-            if qty <= 0:
-                raise serializers.ValidationError(f"Línea {i+1}: cantidad debe ser mayor a 0")
+            try:
+                qty = float(item.get('quantity', 0))
+                if qty <= 0:
+                    raise serializers.ValidationError(f"Línea {i+1}: cantidad debe ser mayor a 0")
+            except (ValueError, TypeError):
+                raise serializers.ValidationError(f"Línea {i+1}: cantidad inválida")
         return items
