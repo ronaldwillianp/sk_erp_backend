@@ -261,11 +261,13 @@ class StockMovementSerializer(serializers.ModelSerializer):
             # Lectura
             'product', 'warehouse', 'destination_warehouse',
             'presentation', 'destination_presentation', 'user',
+            'product_name_snapshot',           # <-- NUEVO: Snapshot del nombre del producto
+            'presentation_name_snapshot',      # <-- NUEVO: Snapshot del nombre de la presentación
             # Escritura
             'product_id', 'warehouse_id', 'destination_warehouse_id',
             'presentation_id', 'destination_presentation_id',
         ]
-        read_only_fields = ['user', 'created_at']
+        read_only_fields = ['user', 'created_at', 'product_name_snapshot', 'presentation_name_snapshot']
 
     def validate(self, data):
         movement_type = data.get('movement_type')
@@ -299,6 +301,17 @@ class StockMovementSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
+        
+        # === NUEVO: Generar snapshots automáticamente si no vienen en validated_data ===
+        # Esto es un fallback por si algún flujo crea movimientos vía serializer sin pasar snapshots
+        if 'product' in validated_data and 'product_name_snapshot' not in validated_data:
+            product = validated_data['product']
+            validated_data['product_name_snapshot'] = product.name
+            
+        if 'presentation' in validated_data and 'presentation_name_snapshot' not in validated_data:
+            presentation = validated_data['presentation']
+            validated_data['presentation_name_snapshot'] = f"{presentation.measure_unit.name} (x{presentation.conversion_factor})"
+        
         movement = super().create(validated_data)
         self._update_stock(movement)
         return movement
@@ -423,7 +436,14 @@ class StockDocumentLineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockDocumentLine
-        fields = ['id', 'product', 'product_detail', 'presentation', 'presentation_detail', 'quantity', 'unit_cost']
+        fields = [
+            'id', 'document', 
+            'product', 'product_detail',
+            'product_name_snapshot',  # <-- NUEVO
+            'presentation', 'presentation_detail',
+            'presentation_name_snapshot',  # <-- NUEVO
+            'quantity', 'unit_cost'
+        ]
 
 class StockDocumentSerializer(serializers.ModelSerializer):
     lines = StockDocumentLineSerializer(many=True, read_only=True)

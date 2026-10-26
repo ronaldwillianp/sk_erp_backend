@@ -519,6 +519,7 @@ class ConversionViewSet(viewsets.ViewSet):
             to_stock.save()
 
             # Registrar el movimiento de conversión
+                        # Registrar el movimiento de conversión
             movement = StockMovement.objects.create(
                 product=product,
                 warehouse=warehouse,
@@ -529,6 +530,9 @@ class ConversionViewSet(viewsets.ViewSet):
                 unit_cost=cost_per_source_unit,
                 user=request.user,
                 notes=f'{quantity} {from_presentation.measure_unit.short_name} → {quantity_destination} {to_presentation.measure_unit.short_name}',
+                # === NUEVO: Guardar snapshots ===
+                product_name_snapshot=product.name,
+                presentation_name_snapshot=f"{from_presentation.measure_unit.name} (x{from_presentation.conversion_factor})",
             )
 
         return Response({
@@ -645,6 +649,7 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                 created_by=request.user,
             )
 
+            
             # Procesar cada línea
             for item_data in data['items']:
                 product = Product.objects.get(id=item_data['product_id'])
@@ -686,11 +691,13 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                     presentation=presentation,
                     quantity=quantity,
                     unit_cost=unit_cost,
+                    # === NUEVO: Guardar snapshots ===
+                    product_name_snapshot=product.name,
+                    presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
                 )
 
                 # Generar movimiento(s)
                 if doc_type == 'TRANSFER':
-                    # Traslado: genera movimiento de tipo TRANSFER
                     movement = StockMovement.objects.create(
                         movement_type='TRANSFER',
                         product=product,
@@ -703,11 +710,12 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                         reference=f"Vale {document.number}",
                         notes=data.get('notes', ''),
                         user=request.user,
+                        # === NUEVO: Guardar snapshots ===
+                        product_name_snapshot=product.name,
+                        presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
                     )
-                    # Actualizar stock manualmente (salida de origen + entrada en destino)
                     self._apply_transfer(movement)
                 else:
-                    # ENTRY, EXIT, ADJUSTMENT
                     movement = StockMovement.objects.create(
                         movement_type=doc_type,
                         product=product,
@@ -718,8 +726,12 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                         reference=f"Vale {document.number}",
                         notes=data.get('notes', ''),
                         user=request.user,
+                        # === NUEVO: Guardar snapshots ===
+                        product_name_snapshot=product.name,
+                        presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
                     )
                     self._apply_movement(movement)
+                
 
         return Response(
             StockDocumentSerializer(document).data,
@@ -791,3 +803,45 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
         to_stock.quantity += movement.quantity
         to_stock.total_value += value_transferred
         to_stock.save()
+
+    @action(detail=False, methods=['delete'], url_path='purge')
+    def purge_documents(self, request):
+        """
+        Elimina TODOS los vales de inventario y reinicia los IDs.
+        ⚠️ ACCIÓN DE DESARROLLO/ADMINISTRADOR.
+        Nota: Esto NO borra los movimientos de stock asociados ni restaura el stock.
+        """
+        try:
+            with transaction.atomic():
+                count = StockDocument.objects.count()
+                
+                # Borramos las líneas primero por integridad referencial (si no hay CASCADE)
+                StockDocumentLine.objects.all().delete()
+                StockDocument.objects.all().delete()
+
+                # Reiniciar auto-increment de la tabla
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    try:
+                        # PostgreSQL
+                        cursor.execute(
+                            "SELECT setval(pg_get_serial_sequence('inventory_stockdocument', 'id'), 1, false)"
+                        )
+                        # Si tienes líneas con ID propio que también quieres reiniciar:
+                        cursor.execute(
+                            "SELECT setval(pg_get_serial_sequence('inventory_stockdocumentline', 'id'), 1, false)"
+                        )
+                    except Exception:
+                        # Fallback para SQLite u otros motores
+                        pass
+
+                return Response({
+                    'message': f'{count} vales eliminados e IDs reiniciados correctamente.',
+                    'deleted_count': count,
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Error al purgar vales: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

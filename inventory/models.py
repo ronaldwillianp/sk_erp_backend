@@ -33,7 +33,6 @@ class Warehouse(models.Model):
     class Meta:
         ordering = ['name']
 
-
 class Product(models.Model):
     name = models.CharField(max_length=100)
     sku = models.CharField(max_length=20, unique=True)
@@ -61,7 +60,6 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['name']
-
 
 class ProductPresentation(models.Model):
     """
@@ -93,7 +91,6 @@ class ProductPresentation(models.Model):
     def __str__(self):
         return f"{self.product.sku} - {self.measure_unit.name} (x{self.conversion_factor})"
 
-
 class Supplier(models.Model):
     name = models.CharField(max_length=100)
     contact_person = models.CharField(max_length=100, blank=True)
@@ -114,7 +111,6 @@ class Supplier(models.Model):
     class Meta:
         ordering = ['name']
 
-
 class StockMovement(models.Model):
     MOVEMENT_TYPES = [
         ('ENTRY', 'Entrada'),
@@ -132,18 +128,29 @@ class StockMovement(models.Model):
         related_name='movements',
         help_text="Unidad de medida en la que se registra este movimiento"
     )
-    # Solo para traslados: almacén destino
     destination_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.PROTECT,
         null=True, blank=True, related_name='incoming_transfers'
     )
-    # Solo para conversiones: presentación destino
     destination_presentation = models.ForeignKey(
         ProductPresentation,
         on_delete=models.PROTECT,
         null=True, blank=True, related_name='incoming_conversions',
         help_text="UM destino en conversiones (ej: de Caja a Unidad)"
     )
+    
+    # === NUEVO: Snapshots de los nombres en el momento del movimiento ===
+    product_name_snapshot = models.CharField(
+        max_length=150, 
+        help_text="Nombre del producto al momento del movimiento (inmutable)"
+    )
+    presentation_name_snapshot = models.CharField(
+        max_length=100, 
+        blank=True, 
+        default='',
+        help_text="Nombre de la presentación al momento del movimiento"
+    )
+    
     movement_type = models.CharField(max_length=15, choices=MOVEMENT_TYPES)
     quantity = models.DecimalField(
         max_digits=10, decimal_places=2,
@@ -163,11 +170,10 @@ class StockMovement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.movement_type} | {self.product.sku} x{self.quantity} {self.presentation.measure_unit.short_name}"
+        return f"{self.movement_type} | {self.product_name_snapshot} x{self.quantity} {self.presentation_name_snapshot}"
 
     class Meta:
         ordering = ['-created_at']
-
 
 class ProductWarehouseStock(models.Model):
     """
@@ -252,14 +258,26 @@ class StockDocument(models.Model):
             self.number = f"{prefix}-{next_num:05d}"
         super().save(*args, **kwargs)
 
-
 class StockDocumentLine(models.Model):
     """Línea de un documento de stock"""
     document = models.ForeignKey(StockDocument, on_delete=models.CASCADE, related_name='lines')
     product = models.ForeignKey('Product', on_delete=models.PROTECT)
     presentation = models.ForeignKey('ProductPresentation', on_delete=models.PROTECT)
+    
+    # === NUEVO: Snapshots de los nombres en el momento del vale ===
+    product_name_snapshot = models.CharField(
+        max_length=150, 
+        help_text="Nombre del producto al momento del vale (inmutable)"
+    )
+    presentation_name_snapshot = models.CharField(
+        max_length=100, 
+        blank=True, 
+        default='',
+        help_text="Nombre de la presentación al momento del vale"
+    )
+    
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def __str__(self):
-        return f"{self.product.name} x{self.quantity}"
+        return f"{self.product_name_snapshot} x{self.quantity}"

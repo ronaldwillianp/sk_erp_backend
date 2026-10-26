@@ -118,6 +118,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     quantity=quantity,
                     unit_price=unit_price,
                     discount_percent=Decimal(str(item_data.get('discount_percent', 0))),
+                    product_name_snapshot=product.name,
+                    presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
                 )
                 subtotal += line.line_total
                 items_created.append({
@@ -200,7 +202,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 else:
                     stock_record.save()
 
-                # C. Registrar movimiento individual
+                                # C. Registrar movimiento individual
                 StockMovement.objects.create(
                     movement_type='EXIT',
                     product=product,
@@ -210,6 +212,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     unit_cost=unit_cost,
                     reference=doc_ref,
                     user=request.user,
+                    # === NUEVO: Guardar snapshots ===
+                    product_name_snapshot=product.name,
+                    presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
                 )
 
         return Response(

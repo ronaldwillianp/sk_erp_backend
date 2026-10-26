@@ -75,11 +75,25 @@ class Invoice(models.Model):
 
 
 class InvoiceItem(models.Model):
-    """Línea de factura"""
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
+    
+    # Mantenemos las FK para trazabilidad y reportes, pero NO las usamos para mostrar el nombre
     product = models.ForeignKey('inventory.Product', on_delete=models.PROTECT)
     presentation = models.ForeignKey('inventory.ProductPresentation', on_delete=models.PROTECT)
     warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.PROTECT)
+    
+    # === NUEVO: Snapshots de los nombres en el momento de la venta ===
+    product_name_snapshot = models.CharField(
+        max_length=150, 
+        help_text="Nombre del producto al momento de la venta (inmutable)"
+    )
+    presentation_name_snapshot = models.CharField(
+        max_length=100, 
+        blank=True, 
+        default='',
+        help_text="Nombre de la presentación al momento de la venta"
+    )
+    
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -93,4 +107,5 @@ class InvoiceItem(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.product.name} x{self.quantity}"
+        # Usamos el snapshot para la representación en string
+        return f"{self.product_name_snapshot} x{self.quantity}"

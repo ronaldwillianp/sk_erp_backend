@@ -111,6 +111,40 @@ class CashRegisterViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    @action(detail=False, methods=['delete'], url_path='purge')
+    def purge_registers(self, request):
+        """
+        Elimina TODOS los registros de caja y reinicia los IDs.
+        ⚠️ ACCIÓN DE DESARROLLO/ADMINISTRADOR. 
+        """
+        try:
+            with transaction.atomic():
+                count = CashRegister.objects.count()
+                CashRegister.objects.all().delete()
+
+                # Reiniciar auto-increment de la tabla
+                from django.db import connection  # <--- IMPORTANTE: Importar aquí
+                with connection.cursor() as cursor:
+                    try:
+                        # PostgreSQL
+                        cursor.execute(
+                            "SELECT setval(pg_get_serial_sequence('pos_cashregister', 'id'), 1, false)"
+                        )
+                    except Exception:
+                        # Fallback para SQLite u otros motores
+                        pass
+
+                return Response({
+                    'message': f'{count} registros de caja eliminados e IDs reiniciados correctamente.',
+                    'deleted_count': count,
+                }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Error al purgar cierres de caja: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=False, methods=['get'], url_path='current')
     def current_register(self, request):
         """

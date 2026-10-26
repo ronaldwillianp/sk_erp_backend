@@ -31,10 +31,12 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceItem
         fields = [
-            'id', 'product', 'presentation', 'warehouse',
+            'id', 
+            'product', 'presentation', 'warehouse',
+            'product_name_snapshot',
+            'presentation_name_snapshot', 
             'quantity', 'unit_price', 'discount_percent', 'line_total'
         ]
-
 
 class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True, read_only=True)
