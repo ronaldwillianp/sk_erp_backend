@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Customer, Invoice, InvoiceItem
 from inventory.serializers import ProductSerializer, ProductPresentationSerializer, WarehouseSerializer
+from pos.serializers import InvoicePaymentInputSerializer
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -47,14 +48,20 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 class InvoiceCreateSerializer(serializers.Serializer):
     customer_id = serializers.IntegerField()
-    issue_date = serializers.DateField(required=False, allow_null=True)  # ← NUEVO
+    issue_date = serializers.DateField(required=False, allow_null=True)
     due_date = serializers.DateField(required=False, allow_null=True)
-    status = serializers.ChoiceField(  # ← NUEVO
+    status = serializers.ChoiceField(
         choices=['DRAFT', 'SENT', 'PAID'],
         default='DRAFT'
     )
+    cash_register_id = serializers.IntegerField(required=False, allow_null=True)  # ← NUEVO
     notes = serializers.CharField(required=False, allow_blank=True, default='')
     items = serializers.ListField(child=serializers.DictField(), min_length=1)
+    payments = serializers.ListField(  # ← NUEVO
+        child=InvoicePaymentInputSerializer(),
+        required=False,
+        default=[]
+    )
 
     def validate_items(self, items):
         for i, item in enumerate(items):
@@ -71,3 +78,13 @@ class InvoiceCreateSerializer(serializers.Serializer):
             except (ValueError, TypeError):
                 raise serializers.ValidationError(f"Línea {i+1}: cantidad inválida")
         return items
+
+    def validate(self, data):
+        """Validar que si status=PAID, haya al menos un pago"""
+        if data.get('status') == 'PAID':
+            payments = data.get('payments', [])
+            if not payments:
+                raise serializers.ValidationError({
+                    'payments': 'Debe proporcionar al menos un pago cuando el estado es PAID'
+                })
+        return data

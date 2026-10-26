@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from pos.models import CashRegister
 
 
 class Customer(models.Model):
@@ -46,6 +47,16 @@ class Invoice(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, related_name='created_invoices'
     )
+
+    # NUEVO: Vincular con sesión de caja (Opcional, para ventas manuales no lleva caja)
+    cash_register = models.ForeignKey(
+        'pos.CashRegister', 
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='invoices',
+        help_text="Sesión de caja donde se realizó esta venta"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

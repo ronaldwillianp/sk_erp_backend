@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/configuration/', include('configuration.urls')),
     path('api/inventory/', include('inventory.urls')),
     path('api/sales/', include('sales.urls')),
+    path('api/pos/', include('pos.urls')),
 
     re_path(r'^(?!admin/|api/|media/|assets/|.well-known/|auth/)', index),
 ]

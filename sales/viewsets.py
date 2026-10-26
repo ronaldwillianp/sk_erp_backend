@@ -39,8 +39,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='create-with-items')
     def create_with_items(self, request):
         """
-        Crea una factura, su vale asociado y descuenta stock.
-        Todo dentro de una transacción atómica: si falla algo, no se crea nada.
+        Crea una factura, su vale asociado, procesa pagos y descuenta stock.
+        Todo dentro de una transacción atómica.
         """
         serializer = InvoiceCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -51,23 +51,39 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         except Customer.DoesNotExist:
             return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Determinar estado inicial (por defecto DRAFT, pero permite PAID)
+        # Determinar estado inicial
         initial_status = data.get('status', 'DRAFT')
         valid_statuses = [s[0] for s in Invoice.STATUS_CHOICES]
         if initial_status not in valid_statuses:
             initial_status = 'DRAFT'
+
+        # Validar Cash Register si se proporciona
+        cash_register = None
+        if data.get('cash_register_id'):
+            from pos.models import CashRegister
+            try:
+                cash_register = CashRegister.objects.get(
+                    id=data['cash_register_id'],
+                    status='OPEN'
+                )
+            except CashRegister.DoesNotExist:
+                return Response(
+                    {'error': 'La caja seleccionada no existe o está cerrada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         issue_date = data.get('issue_date') or timezone.now().date()
 
         with transaction.atomic():
             # 1. Crear Factura
             invoice = Invoice.objects.create(
-            customer=customer,
-            issue_date=issue_date,
-            due_date=data.get('due_date'),
-            notes=data.get('notes', ''),
-            created_by=request.user,
-            status=initial_status,
+                customer=customer,
+                issue_date=issue_date,
+                due_date=data.get('due_date'),
+                notes=data.get('notes', ''),
+                created_by=request.user,
+                status=initial_status,
+                cash_register=cash_register,  # <-- NUEVO: Vincular con la caja
             )
 
             subtotal = Decimal('0')
@@ -91,7 +107,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
                 available = stock_record.quantity if stock_record else Decimal('0')
                 if available < quantity:
-                    # Lanzar excepción para provocar rollback de toda la transacción
                     raise Exception(f'Stock insuficiente para {product.name}. Disponible: {available}, solicitado: {quantity}')
 
                 # Crear línea de factura
@@ -113,26 +128,50 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     'unit_cost': Decimal(str(product.cost_price)),
                 })
 
-            # Actualizar totales
+            # Actualizar totales básicos
             invoice.subtotal = subtotal
             invoice.tax_total = Decimal('0')
             invoice.total = subtotal
+            
+            # 3. Procesar Pagos (si el estado inicial es PAID o hay pagos definidos)
+            payments_data = data.get('payments', [])
+            total_paid = Decimal('0')
+            
+            if payments_data:
+                from pos.models import InvoicePayment
+                
+                for payment_data in payments_data:
+                    InvoicePayment.objects.create(
+                        invoice=invoice,
+                        payment_method_id=payment_data['payment_method_id'],
+                        amount=Decimal(str(payment_data['amount'])),
+                        reference=payment_data.get('reference', ''),
+                    )
+                    total_paid += Decimal(str(payment_data['amount']))
+                
+                invoice.paid_amount = total_paid
+                
+                # Ajustar estado final según lo pagado
+                if total_paid >= invoice.total:
+                    invoice.status = 'PAID'
+                elif total_paid > 0:
+                    invoice.status = 'PARTIAL'
+                # Si total_paid es 0, se mantiene el status inicial (ej. DRAFT o SENT)
+            
             invoice.save()
 
-            # 3. Generar Vale de Salida (StockDocument) asociado a la factura
-            # Buscamos o creamos un documento tipo EXIT vinculado a esta factura
+            # 4. Generar Vale de Salida (StockDocument) asociado a la factura
             doc_ref = f"Factura {invoice.number}"
             
-            # Creamos el documento padre
             stock_doc = StockDocument.objects.create(
                 document_type='EXIT',
-                warehouse_id=data['items'][0]['warehouse_id'], # Usamos el almacén de la primera línea como referencia principal
+                warehouse_id=data['items'][0]['warehouse_id'],
                 reference=doc_ref,
                 notes=f"Generado automáticamente por factura {invoice.number}",
                 created_by=request.user,
             )
 
-            # 4. Aplicar movimientos de stock y líneas del vale
+            # 5. Aplicar movimientos de stock y líneas del vale
             for item_info in items_created:
                 product = item_info['product']
                 presentation = item_info['presentation']

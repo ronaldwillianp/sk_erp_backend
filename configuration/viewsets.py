@@ -176,6 +176,13 @@ class PaymentMethodViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'enabled']
     ordering = ['name']
     filterset_fields = ['enabled']
+    
+    @action(detail=False, methods=['get'], url_path='enabled')
+    def enabled(self, request):
+        """Devuelve solo los métodos de pago habilitados"""
+        queryset = self.get_queryset().filter(enabled=True)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.select_related('parent').order_by('category_type', 'name')
