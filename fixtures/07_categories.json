@@ -212,7 +212,7 @@
     "model": "configuration.category",
     "pk": 20,
     "fields": {
-        "name": "FerreterÝa",
+        "name": "Ferretería",
         "category_type": "PRODUCT",
         "parent": null,
         "description": "Tornillos, clavos, cerraduras, pinturas, plomería",
