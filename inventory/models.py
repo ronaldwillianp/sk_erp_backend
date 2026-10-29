@@ -1,16 +1,11 @@
 from django.db import models
 from django.conf import settings
-
+from configuration.constants import WAREHOUSE_TYPE_CHOICES, MOVEMENT_TYPE_CHOICES
 
 class Warehouse(models.Model):
-    WAREHOUSE_TYPES = [
-        ('WAREHOUSE', 'Almacén'),
-        ('POINT_OF_SALE', 'Punto de venta'),
-    ]
-
     name = models.CharField(max_length=50, unique=True)
     code = models.CharField(max_length=10, unique=True)
-    warehouse_type = models.CharField(max_length=15, choices=WAREHOUSE_TYPES)
+    warehouse_type = models.CharField(max_length=15, choices=WAREHOUSE_TYPE_CHOICES)
     address = models.CharField(max_length=100, blank=True)
     province = models.ForeignKey(
         'configuration.Province',
@@ -112,14 +107,6 @@ class Supplier(models.Model):
         ordering = ['name']
 
 class StockMovement(models.Model):
-    MOVEMENT_TYPES = [
-        ('ENTRY', 'Entrada'),
-        ('EXIT', 'Salida'),
-        ('TRANSFER', 'Traslado'),
-        ('ADJUSTMENT', 'Ajuste'),
-        ('CONVERSION', 'Conversión'),
-    ]
-
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='movements')
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='movements')
     presentation = models.ForeignKey(
@@ -151,7 +138,7 @@ class StockMovement(models.Model):
         help_text="Nombre de la presentación al momento del movimiento"
     )
     
-    movement_type = models.CharField(max_length=15, choices=MOVEMENT_TYPES)
+    movement_type = models.CharField(max_length=15, choices=MOVEMENT_TYPE_CHOICES)
     quantity = models.DecimalField(
         max_digits=10, decimal_places=2,
         help_text="Cantidad EN LA PRESENTACIÓN del movimiento (no en unidad base)"
@@ -211,15 +198,9 @@ class ProductWarehouseStock(models.Model):
 
 class StockDocument(models.Model):
     """Documento padre para entradas/salidas/traslados/ajustes multi-producto"""
-    TYPE_CHOICES = [
-        ('ENTRY', 'Entrada'),
-        ('EXIT', 'Salida'),
-        ('TRANSFER', 'Traslado'),
-        ('ADJUSTMENT', 'Ajuste'),
-    ]
-    
+       
     number = models.CharField(max_length=20, unique=True, editable=False)
-    document_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    document_type = models.CharField(max_length=10, choices=MOVEMENT_TYPE_CHOICES)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='stock_documents_origin')
     destination_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.PROTECT, 

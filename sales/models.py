@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from pos.models import CashRegister
+from configuration.constants import INVOICE_STATUS_CHOICES
 
 
 class Customer(models.Model):
@@ -24,18 +25,10 @@ class Customer(models.Model):
 
 class Invoice(models.Model):
     """Factura de venta"""
-    STATUS_CHOICES = [
-        ('DRAFT', 'Borrador'),
-        ('SENT', 'Enviada'),
-        ('PAID', 'Pagada'),
-        ('PARTIAL', 'Parcialmente Pagada'),
-        ('OVERDUE', 'Vencida'),
-        ('CANCELLED', 'Cancelada'),
-    ]
 
     number = models.CharField(max_length=20, unique=True, editable=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='invoices')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
+    status = models.CharField(max_length=10, choices=INVOICE_STATUS_CHOICES, default='DRAFT')
     issue_date = models.DateField(auto_now_add=True)
     due_date = models.DateField(null=True, blank=True)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)

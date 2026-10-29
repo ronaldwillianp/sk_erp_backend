@@ -188,6 +188,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     presentation=presentation,
                     quantity=quantity,
                     unit_cost=unit_cost,
+                    product_name_snapshot=product.name,
+                    presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
                 )
 
                 # B. Descontar stock físicamente

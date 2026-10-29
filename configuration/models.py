@@ -1,5 +1,6 @@
 from django.db import models
 # from django.utils.text import slugify
+from .constants import CATEGORY_TYPE_CHOICES
 
 # Create your models here.
 
@@ -12,14 +13,8 @@ class Company(models.Model):
     logo = models.ImageField(upload_to='company_logos/', null=True, blank=True)
 
 class Category(models.Model):
-    CATEGORY_TYPES = [
-        ('INCOME', 'Ingreso'),
-        ('EXPENSE', 'Gasto'),
-        ('PRODUCT', 'Producto'),
-    ]
-    
     name = models.CharField(max_length=50)
-    category_type = models.CharField(max_length=10, choices=CATEGORY_TYPES)
+    category_type = models.CharField(max_length=10, choices=CATEGORY_TYPE_CHOICES)
     parent = models.ForeignKey(
         'self', 
         on_delete=models.CASCADE, 

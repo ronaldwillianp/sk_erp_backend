@@ -2,7 +2,7 @@
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
-
+from configuration.constants import CASH_REGISTER_STATUS_CHOICES
 
 class WarehouseUser(models.Model):
     """
@@ -46,10 +46,6 @@ class CashRegister(models.Model):
     """
     Control de sesión de caja diaria por almacén/PV.
     """
-    STATUS_CHOICES = [
-        ('OPEN', 'Abierta'),
-        ('CLOSED', 'Cerrada'),
-    ]
 
     warehouse = models.ForeignKey(
         'inventory.Warehouse', 
@@ -65,7 +61,7 @@ class CashRegister(models.Model):
         help_text="Usuario que abrió la caja"
     )
     
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='OPEN')
+    status = models.CharField(max_length=10, choices=CASH_REGISTER_STATUS_CHOICES, default='OPEN')
     
     # Apertura
     opening_date = models.DateTimeField(auto_now_add=True)
