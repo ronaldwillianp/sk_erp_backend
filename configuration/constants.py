@@ -1,4 +1,12 @@
 # Configuration Module
+
+# Source / Origen de documentos y movimientos
+SOURCE_CHOICES = [
+    ('POS', 'Punto de Venta'),
+    ('BILLING', 'Módulo de Facturación'),
+    ('MANUAL', 'Manual'),
+]
+
 SYSTEM_MODULES_CHOICES = [
     ('CONF','Configuración'),
     ('ADMIN','Administración'),

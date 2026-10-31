@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from pos.models import CashRegister
-from configuration.constants import INVOICE_STATUS_CHOICES
+from configuration.constants import INVOICE_STATUS_CHOICES, SOURCE_CHOICES
 
 
 class Customer(models.Model):
@@ -39,6 +39,13 @@ class Invoice(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, related_name='created_invoices'
+    )
+
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default='BILLING',
+        help_text="Origen de la factura: POS o Módulo de Facturación"
     )
 
     # NUEVO: Vincular con sesión de caja (Opcional, para ventas manuales no lleva caja)

@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from decimal import Decimal
 from django.utils import timezone
+from configuration.constants import INVOICE_STATUS_CHOICES
 from .models import Customer, Invoice, InvoiceItem
 from .serializers import (
     CustomerSerializer, InvoiceSerializer, InvoiceCreateSerializer
@@ -31,7 +32,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     ).prefetch_related('items__product', 'items__presentation', 'items__warehouse')
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['status', 'customer']
+    filterset_fields = ['status', 'customer', 'source']
     search_fields = ['number', 'customer__name']
     ordering_fields = ['created_at', 'total', 'status']
     ordering = ['-created_at']
@@ -53,7 +54,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         # Determinar estado inicial
         initial_status = data.get('status', 'DRAFT')
-        valid_statuses = [s[0] for s in Invoice.STATUS_CHOICES]
+        valid_statuses = [s[0] for s in INVOICE_STATUS_CHOICES]
         if initial_status not in valid_statuses:
             initial_status = 'DRAFT'
 
@@ -73,7 +74,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 )
 
         issue_date = data.get('issue_date') or timezone.now().date()
-
+        # Determinar source basado en si tiene cash_register
+        source = 'POS' if cash_register else 'BILLING'
         with transaction.atomic():
             # 1. Crear Factura
             invoice = Invoice.objects.create(
@@ -84,6 +86,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 created_by=request.user,
                 status=initial_status,
                 cash_register=cash_register,  # <-- NUEVO: Vincular con la caja
+                source=source,  # <-- NUEVO: Vincular con el origen
             )
 
             subtotal = Decimal('0')
@@ -171,6 +174,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 reference=doc_ref,
                 notes=f"Generado automáticamente por factura {invoice.number}",
                 created_by=request.user,
+                source=source,  # <-- NUEVO: Vincular con el origen
             )
 
             # 5. Aplicar movimientos de stock y líneas del vale
@@ -204,7 +208,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 else:
                     stock_record.save()
 
-                                # C. Registrar movimiento individual
+                # C. Registrar movimiento individual
                 StockMovement.objects.create(
                     movement_type='EXIT',
                     product=product,
@@ -217,6 +221,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     # === NUEVO: Guardar snapshots ===
                     product_name_snapshot=product.name,
                     presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
+                    source=source,  # <-- NUEVO: Vincular con el origen
                 )
 
         return Response(
@@ -230,7 +235,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice = self.get_object()
         new_status = request.data.get('status')
 
-        valid_statuses = [s[0] for s in Invoice.STATUS_CHOICES]
+        valid_statuses = [s[0] for s in INVOICE_STATUS_CHOICES]
         if new_status not in valid_statuses:
             return Response(
                 {'error': f'Estado inválido. Use: {", ".join(valid_statuses)}'},

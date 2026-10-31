@@ -10,6 +10,7 @@ from django.db.models.functions import Coalesce
 from .label_generator import generate_product_labels
 from django.http import HttpResponse
 from rest_framework.exceptions import ValidationError  
+from configuration.constants import SOURCE_CHOICES
 
 from .models import (
     Product, Warehouse, Supplier, ProductPresentation, ProductWarehouseStock, StockMovement, StockDocument, StockDocumentLine
@@ -555,7 +556,7 @@ class StockMovementViewSet(viewsets.ModelViewSet):
     serializer_class = StockMovementSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    filterset_fields = ['movement_type', 'product', 'warehouse', 'presentation']
+    filterset_fields = ['movement_type', 'product', 'warehouse', 'presentation', 'source']
     search_fields = ['product__name', 'product__sku', 'reference', 'notes']
     ordering_fields = ['created_at', 'quantity', 'movement_type']
     ordering = ['-created_at']
@@ -579,6 +580,7 @@ class StockMovementViewSet(viewsets.ModelViewSet):
         ).order_by('movement_type')
 
         return Response(list(summary))
+    
     @action(detail=False, methods=['delete'], url_path='purge')
     def purge(self, request):
         """
@@ -602,7 +604,7 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
     ).prefetch_related('lines__product', 'lines__presentation')
     serializer_class = StockDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['document_type', 'warehouse', 'supplier']
+    filterset_fields = ['document_type', 'warehouse', 'supplier','source']
     search_fields = ['number', 'reference', 'notes']
     ordering = ['-created_at']
 
@@ -614,6 +616,14 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
 
         doc_type = data['document_type']
+        # Determinar source: si viene del POS o es manual
+        # Por defecto es MANUAL, pero el POS puede enviar source='POS' en el payload
+        source = data.get('source', 'MANUAL')
+        
+        # Validar que el source sea válido
+        valid_sources = [s[0] for s in SOURCE_CHOICES]
+        if source not in valid_sources:
+            source = 'MANUAL'
         
         # Validar almacén origen
         try:
@@ -647,6 +657,7 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                 reference=data.get('reference', ''),
                 notes=data.get('notes', ''),
                 created_by=request.user,
+                source=source,
             )
 
             
@@ -713,6 +724,7 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                         # === NUEVO: Guardar snapshots ===
                         product_name_snapshot=product.name,
                         presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
+                        source=source,
                     )
                     self._apply_transfer(movement)
                 else:
@@ -729,6 +741,7 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
                         # === NUEVO: Guardar snapshots ===
                         product_name_snapshot=product.name,
                         presentation_name_snapshot=f"{presentation.measure_unit.name} (x{presentation.conversion_factor})",
+                        source=source
                     )
                     self._apply_movement(movement)
                 

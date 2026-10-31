@@ -266,8 +266,9 @@ class StockMovementSerializer(serializers.ModelSerializer):
             # Escritura
             'product_id', 'warehouse_id', 'destination_warehouse_id',
             'presentation_id', 'destination_presentation_id',
+            'source',  # <-- NUEVO: Origen del movimiento
         ]
-        read_only_fields = ['user', 'created_at', 'product_name_snapshot', 'presentation_name_snapshot']
+        read_only_fields = ['user', 'created_at', 'product_name_snapshot', 'presentation_name_snapshot', 'source']
 
     def validate(self, data):
         movement_type = data.get('movement_type')
@@ -301,6 +302,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
+        validated_data['source'] = 'MANUAL'
         
         # === NUEVO: Generar snapshots automáticamente si no vienen en validated_data ===
         # Esto es un fallback por si algún flujo crea movimientos vía serializer sin pasar snapshots

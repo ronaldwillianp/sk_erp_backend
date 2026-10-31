@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from configuration.constants import WAREHOUSE_TYPE_CHOICES, MOVEMENT_TYPE_CHOICES
+from configuration.constants import WAREHOUSE_TYPE_CHOICES, MOVEMENT_TYPE_CHOICES, SOURCE_CHOICES
 
 class Warehouse(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -156,6 +156,13 @@ class StockMovement(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default='MANUAL',
+        help_text="Origen del movimiento: POS, Facturación o Manual"
+    )
+
     def __str__(self):
         return f"{self.movement_type} | {self.product_name_snapshot} x{self.quantity} {self.presentation_name_snapshot}"
 
@@ -218,6 +225,13 @@ class StockDocument(models.Model):
         null=True, related_name='stock_documents_created'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default='MANUAL',
+        help_text="Origen del documento: POS, Facturación o Manual"
+    )
 
     class Meta:
         ordering = ['-created_at']
