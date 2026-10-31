@@ -7,6 +7,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from decimal import Decimal
 from django.contrib.auth.models import Group
+from administration.permissions import IsDeveloper
 
 from .models import CashRegister, InvoicePayment, WarehouseUser
 from .serializers import (
@@ -111,7 +112,7 @@ class CashRegisterViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
-    @action(detail=False, methods=['delete'], url_path='purge')
+    @action(detail=False, methods=['delete'], url_path='purge', permission_classes=[IsDeveloper])
     def purge_registers(self, request):
         """
         Elimina TODOS los registros de caja y reinicia los IDs.

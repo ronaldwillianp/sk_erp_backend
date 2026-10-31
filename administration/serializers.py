@@ -42,6 +42,11 @@ class UserSerializer(serializers.ModelSerializer):
         allow_null=True
     )
 
+    # === NUEVO: Campos de permisos computados ===
+    is_developer = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField()
+    group_names = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -49,12 +54,24 @@ class UserSerializer(serializers.ModelSerializer):
             'ci', 'contact', 'address', 
             'province', 'municipality', 'groups',
             'province_id', 'municipality_id', 'group_ids',
-            'is_active'
+            'is_active','is_developer', 'is_admin', 'group_names',
         ]
         extra_kwargs = {
             'password': {'write_only': True, 'required': False} # Importante: required=False
         }
 
+    def get_is_developer(self, obj):
+        """True SOLO si pertenece al grupo Desarrollador"""
+        return 'Desarrollador' in [g.name for g in obj.groups.all()]
+
+    def get_is_admin(self, obj):
+        """True SOLO si pertenece al grupo Administrador"""
+        return 'Administrador' in [g.name for g in obj.groups.all()]
+
+    def get_group_names(self, obj):
+        """Lista simple de nombres de grupos del usuario"""
+        return [g.name for g in obj.groups.all()]
+    
     def create(self, validated_data):
         groups_data = validated_data.pop('groups', [])
         password = validated_data.pop('password')

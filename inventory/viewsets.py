@@ -11,6 +11,7 @@ from .label_generator import generate_product_labels
 from django.http import HttpResponse
 from rest_framework.exceptions import ValidationError  
 from configuration.constants import SOURCE_CHOICES
+from administration.permissions import IsDeveloper, IsDeveloperOrAdmin
 
 from .models import (
     Product, Warehouse, Supplier, ProductPresentation, ProductWarehouseStock, StockMovement, StockDocument, StockDocumentLine
@@ -102,6 +103,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering = ['name']
     filterset_fields = ['category', 'enabled', 'is_service']
 
+    def destroy(self, request, *args, **kwargs):
+        """Eliminar producto individual → Solo Desarrollador"""
+        permission = IsDeveloperOrAdmin()
+        if not permission.has_permission(request, self):
+            return Response(
+                {'error': permission.message},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['get'], url_path='enabled')
     def enabled(self, request):
         """
@@ -116,7 +127,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-    @action(detail=False, methods=['delete'], url_path='purge')
+    @action(detail=False, methods=['delete'], url_path='purge', permission_classes=[IsDeveloper])
     def purge(self, request):
         """
         Elimina TODOS los datos del sistema (Ventas e Inventario).
@@ -401,7 +412,7 @@ class StockViewSet(viewsets.ReadOnlyModelViewSet):
             'alerts': alerts_list,
         }, status=status.HTTP_200_OK)
     
-    @action(detail=True, methods=['delete'], url_path='delete')
+    @action(detail=True, methods=['delete'], url_path='delete', permission_classes=[IsDeveloperOrAdmin])
     def delete_stock(self, request, pk=None):
         """
         Elimina un registro de stock individual.
@@ -420,7 +431,7 @@ class StockViewSet(viewsets.ReadOnlyModelViewSet):
         except ProductWarehouseStock.DoesNotExist:
             return Response({'error': 'Registro de stock no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['delete'], url_path='purge')
+    @action(detail=False, methods=['delete'], url_path='purge', permission_classes=[IsDeveloper])
     def purge(self, request):
         """
         Elimina TODOS los registros de stock. No reinicia IDs.
@@ -581,7 +592,7 @@ class StockMovementViewSet(viewsets.ModelViewSet):
 
         return Response(list(summary))
     
-    @action(detail=False, methods=['delete'], url_path='purge')
+    @action(detail=False, methods=['delete'], url_path='purge', permission_classes=[IsDeveloper])
     def purge(self, request):
         """
         Elimina TODOS los movimientos y reinicia los IDs.
@@ -817,7 +828,7 @@ class StockDocumentViewSet(viewsets.ModelViewSet):
         to_stock.total_value += value_transferred
         to_stock.save()
 
-    @action(detail=False, methods=['delete'], url_path='purge')
+    @action(detail=False, methods=['delete'], url_path='purge', permission_classes=[IsDeveloper])
     def purge_documents(self, request):
         """
         Elimina TODOS los vales de inventario y reinicia los IDs.
